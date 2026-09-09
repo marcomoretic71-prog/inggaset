@@ -1,0 +1,49 @@
+/* FONDO DE LA PÁGINA CASI BLANCO COMO ME PEDISTE */
+body, #content, .main{
+  background:#fdfbf1!important;
+}
+
+/* CAJA DE LA TABLA */
+#changelist{
+  background:#ffffff!important;
+  border-radius:18px!important;
+  border:1px solid #e2dcc5!important;
+  padding:18px!important;
+  box-shadow:0 4px 20px rgba(0,0,0,0.04)!important;
+}
+
+/* HEADER DE LA TABLA - AHORA CLARITO PARA QUE SE LEA */
+#changelist table thead th{
+  background:#eef3e1!important;
+  color:#425d4d!important;
+  padding:14px 12px!important;
+  font-size:11px!important;
+  letter-spacing:1px!important;
+  text-transform:uppercase!important;
+  font-weight:900!important;
+  border:none!important;
+  border-bottom:2px solid #d6cdb0!important;
+}
+#changelist table thead th a{
+  color:#425d4d!important;
+}
+
+/* FILAS */
+#changelist table tbody td{
+  background:white!important;
+  padding:13px 12px!important;
+  color:#3d3522!important;
+  font-weight:600!important;
+}
+#changelist table tbody tr:nth-child(even) td{
+  background:#fdfbf1!important;
+}
+#changelist table tbody tr:hover td{
+  background:#f5f1e0!important;
+}
+
+/* LINKS */
+#changelist table tbody td a{
+  color:#425d4d!important;
+  font-weight:800!important;
+}

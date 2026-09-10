@@ -155,66 +155,61 @@ def importar_excel(request):
     if request.method == 'POST' and request.FILES.get('archivo_excel'):
         archivo = request.FILES['archivo_excel']
         try:
-            df = pd.read_excel(archivo, sheet_name='Kilos', dtype=str)
+            xls = pd.ExcelFile(archivo)
+            # Tu hoja se llama Sheet1
+            df = pd.read_excel(archivo, sheet_name=xls.sheet_names[0], dtype=str)
+            df.columns = [str(c).lower().strip() for c in df.columns]
+
             corral_default = Corral.objects.first()
+            if not corral_default:
+                _asegurar_corrales()
+                corral_default = Corral.objects.first()
+
             creados = 0
             actualizados = 0
-            vistos = set()
 
             for _, row in df.iterrows():
-                caravana_raw = str(row.iloc[15]) if pd.notna(row.iloc[15]) else ""
-                if 'caravana' in caravana_raw.lower() or caravana_raw.strip() == "" or caravana_raw == "nan":
+                # Detecta columnas por nombre
+                caravana = str(row.get('nro caravana', row.get('caravana', ''))).strip()
+                if not caravana or 'caravana' in caravana.lower() or caravana == 'nan':
                     continue
-                caravana = ''.join(filter(str.isdigit, caravana_raw))
-                if not caravana:
-                    continue
-                try: peso = float(str(row.iloc[16]).replace(',','.'))
-                except: peso = 0
-                sexo_raw = str(row.iloc[17]).lower()
-                categoria = 'hembra' if 'h' in sexo_raw or 'f' in sexo_raw else ('castrado' if 'castr' in sexo_raw else 'macho')
-                if caravana in vistos: continue
-                vistos.add(caravana)
+                caravana = ''.join(filter(str.isdigit, caravana))
+                if len(caravana) < 5: continue
+
+                peso_raw = str(row.get('kilo', row.get('peso', '0'))).replace(',','.')
+                try: peso = float(peso_raw)
+                except: peso = 80
+
+                sexo = str(row.get('sexo', '')).lower()
+                if 'h' in sexo: categoria = 'vaquillona' # hembra
+                elif 'castr' in sexo: categoria = 'novillo'
+                elif 'toro' in sexo: categoria = 'toro'
+                elif 'vaca' in sexo: categoria = 'vaca'
+                else: categoria = 'ternero' # macho por defecto
+
                 animal, created = Animal.objects.get_or_create(
                     numero_caravana=caravana,
-                    defaults={'kg_actual': peso if peso>0 else 80, 'categoria': categoria, 'corral_actual': corral_default, 'activo': True, 'fecha_ingreso_corral': date.today()}
+                    defaults={
+                        'kg_actual': peso,
+                        'categoria': categoria,
+                        'corral_actual': corral_default,
+                        'activo': True,
+                        'fecha_ingreso_corral': date.today()
+                    }
                 )
                 if created:
-                    creados+=1
-                    if peso>0: Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
+                    creados += 1
+                    Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
                 else:
-                    if peso>0 and peso!= animal.kg_actual:
-                        animal.kg_actual=peso
+                    if peso!= animal.kg_actual and peso > 0:
+                        animal.kg_actual = peso
                         animal.save()
                         Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
-                        actualizados+=1
+                        actualizados += 1
 
-            for _, row in df.iterrows():
-                caravana_raw = str(row.iloc[1]) if pd.notna(row.iloc[1]) else ""
-                if 'caravana' in caravana_raw.lower() or caravana_raw.strip() == "" or caravana_raw == "nan":
-                    continue
-                caravana = ''.join(filter(str.isdigit, caravana_raw))[:15]
-                if not caravana or len(caravana) < 2:
-                    continue
-                if caravana in vistos: continue
-                try: peso = float(str(row.iloc[3]).replace(',','.'))
-                except: peso = 0
-                if peso == 0 or peso > 1000:
-                    try: peso = float(str(row.iloc[4]).replace(',','.'))
-                    except: peso = 80
-                sexo_raw = str(row.iloc[2]).lower()
-                categoria = 'hembra' if 'h' in sexo_raw else ('castrado' if 'c' in sexo_raw else 'macho')
-                vistos.add(caravana)
-                animal, created = Animal.objects.get_or_create(
-                    numero_caravana=caravana,
-                    defaults={'kg_actual': peso if peso>0 else 80, 'categoria': categoria, 'corral_actual': corral_default, 'activo': True, 'fecha_ingreso_corral': date.today()}
-                )
-                if created:
-                    creados+=1
-                    Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
-
-            messages.success(request, f'¡Importación completa! {creados} nuevos, {actualizados} actualizados. Total: {Animal.objects.filter(activo=True).count()}')
+            messages.success(request, f'¡Listo! {creados} nuevos, {actualizados} actualizados. Total activo: {Animal.objects.filter(activo=True).count()}')
 
         except Exception as e:
-            messages.error(request, f'Error al importar: {e}')
+            messages.error(request, f'Error al importar: {e} - Hoja: {xls.sheet_names}')
 
     return redirect('dashboard')

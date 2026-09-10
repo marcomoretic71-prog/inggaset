@@ -44,9 +44,18 @@ class Corral(models.Model):
         return self.nombre_bonito
 
 class Animal(models.Model):
-    CATEGORIAS = [('macho','Macho'),('hembra','Hembra'),('castrado','Castrado')]
+    CATEGORIAS = [
+        ('macho', 'Macho'),
+        ('hembra', 'Hembra'),
+        ('castrado', 'Castrado'),
+        ('vaquillona', 'Vaquillona'),
+        ('vaca', 'Vaca'),
+        ('toro', 'Toro'),
+        ('novillo', 'Novillo'),
+        ('macho_entero', 'Macho entero'),
+    ]
     numero_caravana = models.CharField(max_length=20, unique=True)
-    categoria = models.CharField(max_length=10, choices=CATEGORIAS, default='macho')
+    categoria = models.CharField(max_length=15, choices=CATEGORIAS, default='macho')
     kg_ingreso = models.FloatField(default=150)
     kg_actual = models.FloatField(default=150)
     corral_actual = models.ForeignKey(Corral, on_delete=models.SET_NULL, null=True)
@@ -131,17 +140,28 @@ class Animal(models.Model):
             return 'mover'
         return None
 
+    def __str__(self):
+        return self.numero_caravana
+
 class Pesada(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
     peso = models.FloatField()
     fecha = models.DateField(default=date.today)
 
 class Movimiento(models.Model):
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
+    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='movimientos')
     corral_origen = models.ForeignKey(Corral, on_delete=models.SET_NULL, null=True, related_name='origen')
     corral_destino = models.ForeignKey(Corral, on_delete=models.SET_NULL, null=True, related_name='destino')
-    peso_en_movimiento = models.FloatField()
+    peso_en_movimiento = models.FloatField(default=0)
     fecha = models.DateField(default=date.today)
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        origen = self.corral_origen.nombre_bonito if self.corral_origen else "Ingreso"
+        destino = self.corral_destino.nombre_bonito if self.corral_destino else "-"
+        return f"{self.animal.numero_caravana}: {origen} -> {destino} ({self.fecha})"
 
 class Venta(models.Model):
     animal = models.OneToOneField(Animal, on_delete=models.CASCADE)

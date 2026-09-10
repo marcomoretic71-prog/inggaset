@@ -1,13 +1,39 @@
 {% extends "admin/base.html" %}
+{% block title %}IngGaset{% endblock %}
+
 {% block extrastyle %}
 <style>
+/* HEADER */
 #header{background:#425d4d!important}
-#header #branding h1 a{color:#d9e6c3!important;font-weight:900}
-div.breadcrumbs{background:#344a3e!important}
-.module h2,.module caption{background:#425d4d!important;color:#d9e6c3!important}
+#header #branding h1 a{color:#d9e6c3!important;font-weight:900;letter-spacing:0.5px}
+div.breadcrumbs{background:#344a3e!important;color:#d9e6c3!important}
+div.breadcrumbs a{color:#d9e6c3!important}
+
+/* FONDO GENERAL */
 body{background:#ece4d1!important}
-.btn-panel{background:#d9e6c3;color:#425d4d!important;padding:8px 16px;border-radius:999px;font-weight:800;text-decoration:none!important;border:2px solid #425d4d;margin-left:12px}
+
+/* SIDEBAR IZQUIERDO */
+#nav-sidebar{background:#fffaf0!important;border-right:2px solid #d6cdb0!important}
+#nav-sidebar .module h2{background:#425d4d!important;color:#d9e6c3!important}
+#nav-sidebar .current-model{background:#d9e6c3!important;border-left:4px solid #425d4d}
+
+/* BOTON IR AL PANEL */
+.btn-panel{background:#d9e6c3!important;color:#425d4d!important;padding:8px 18px!important;border-radius:999px!important;font-weight:900!important;text-decoration:none!important;border:2px solid #425d4d;margin-left:12px}
+.btn-panel:hover{background:white!important}
+
+/* ===== LA TABLA DE DATOS LINDA ===== */
+#changelist{background:#fffaf0!important;border-radius:16px!important;border:2px solid #d6cdb0!important;padding:20px!important;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+#changelist #toolbar{background:#f7f1e0!important;border-radius:10px!important;border:1px solid #d6cdb0!important;padding:10px!important}
+#changelist table thead th{background:#425d4d!important;color:#d9e6c3!important;padding:14px 10px!important;font-size:11px!important;letter-spacing:1px;text-transform:uppercase}
+#changelist table thead th a{color:#d9e6c3!important}
+#changelist table tbody tr{background:white!important;border-bottom:1px solid #e8dfc8!important}
+#changelist table tbody tr:nth-child(even){background:#fffaf0!important}
+#changelist table tbody tr:hover{background:#d9e6c3!important}
+#changelist table tbody td{padding:12px 10px!important;color:#3d3522!important;font-weight:500}
+#changelist .paginator{background:#fffaf0!important;border-radius:10px!important;padding:10px!important;margin-top:15px!important}
+.object-tools a{background:#425d4d!important;border-radius:999px!important;font-weight:700!important;padding:8px 18px!important}
 </style>
 {% endblock %}
-{% block userlinks %}<a href="/" class="btn-panel">← IR AL PANEL</a> / {{ block.super }}{% endblock %}
+
+{% block userlinks %}<a href="/" class="btn-panel">→ IR AL PANEL</a> / {{ block.super }}{% endblock %}
 {% block branding %}<h1 id="site-name"><a href="{% url 'admin:index' %}">I • IngGaset GANADERA</a></h1>{% endblock %}

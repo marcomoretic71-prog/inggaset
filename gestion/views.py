@@ -111,12 +111,10 @@ def informe_pdf(request):
     response['Content-Disposition'] = f'attachment; filename="Informe_IngGaset_{date.today()}.pdf"'
     p = canvas.Canvas(response, pagesize=A4)
     ancho, alto = A4
-
     p.setFont("Helvetica-Bold", 16)
     p.drawString(2*cm, alto - 2*cm, "IngGaset - Informe de Rodeo")
     p.setFont("Helvetica", 10)
     p.drawString(2*cm, alto - 2.7*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total animales activos: {Animal.objects.filter(activo=True).count()}")
-
     y = alto - 4*cm
     p.setFont("Helvetica-Bold", 8)
     p.drawString(1.5*cm, y, "CARAVANA")
@@ -126,19 +124,14 @@ def informe_pdf(request):
     p.drawString(12.5*cm, y, "DIAS")
     p.drawString(14*cm, y, "ESTADO")
     p.line(1.5*cm, y-0.2*cm, 19*cm, y-0.2*cm)
-
     p.setFont("Helvetica", 8)
     y -= 0.6*cm
-
     animales = Animal.objects.filter(activo=True).select_related('corral_actual').order_by('corral_actual__nombre', 'fecha_ingreso_corral')
-
     for animal in animales:
         if y < 2.5*cm:
             p.showPage()
             y = alto - 2*cm
-
         estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {animal.kg_faltantes}kg")
-
         p.drawString(1.5*cm, y, str(animal.numero_caravana))
         p.drawString(4*cm, y, f"{animal.kg_actual} kg")
         p.drawString(6*cm, y, str(animal.corral_actual.nombre_bonito if animal.corral_actual else '-'))
@@ -146,7 +139,6 @@ def informe_pdf(request):
         p.drawString(12.5*cm, y, f"{animal.dias_en_corral}d")
         p.drawString(14*cm, y, str(estado))
         y -= 0.5*cm
-
     p.showPage()
     p.save()
     return response
@@ -156,46 +148,35 @@ def importar_excel(request):
         archivo = request.FILES['archivo_excel']
         try:
             xls = pd.ExcelFile(archivo)
-            # Tu hoja se llama Sheet1
             df = pd.read_excel(archivo, sheet_name=xls.sheet_names[0], dtype=str)
             df.columns = [str(c).lower().strip() for c in df.columns]
-
             corral_default = Corral.objects.first()
             if not corral_default:
                 _asegurar_corrales()
                 corral_default = Corral.objects.first()
-
             creados = 0
             actualizados = 0
-
             for _, row in df.iterrows():
-                # Detecta columnas por nombre
-                caravana = str(row.get('nro caravana', row.get('caravana', ''))).strip()
-                if not caravana or 'caravana' in caravana.lower() or caravana == 'nan':
+                caravana_raw = str(row.get('nro caravana', row.get('caravana', ''))).strip()
+                if not caravana_raw or 'caravana' in caravana_raw.lower() or caravana_raw.lower() == 'nan':
                     continue
-                caravana = ''.join(filter(str.isdigit, caravana))
-                if len(caravana) < 5: continue
-
-                peso_raw = str(row.get('kilo', row.get('peso', '0'))).replace(',','.')
+                caravana = ''.join(filter(str.isdigit, caravana_raw))
+                # CORREGIDO: ahora acepta caravanas de 2 digitos en adelante
+                if not caravana or len(caravana) < 2:
+                    continue
+                peso_raw = str(row.get('kilo', row.get('peso', '0'))).replace(',', '.')
                 try: peso = float(peso_raw)
                 except: peso = 80
-
+                if peso <= 0: peso = 80
                 sexo = str(row.get('sexo', '')).lower()
-                if 'h' in sexo: categoria = 'vaquillona' # hembra
+                if 'h' in sexo or 'f' in sexo: categoria = 'vaquillona'
                 elif 'castr' in sexo: categoria = 'novillo'
                 elif 'toro' in sexo: categoria = 'toro'
                 elif 'vaca' in sexo: categoria = 'vaca'
-                else: categoria = 'ternero' # macho por defecto
-
-                animal, created = Animal.objects.get_or_create(
+                else: categoria = 'ternero'
+                animal, created = Animal.objects.update_or_create(
                     numero_caravana=caravana,
-                    defaults={
-                        'kg_actual': peso,
-                        'categoria': categoria,
-                        'corral_actual': corral_default,
-                        'activo': True,
-                        'fecha_ingreso_corral': date.today()
-                    }
+                    defaults={'kg_actual': peso, 'categoria': categoria, 'corral_actual': corral_default, 'activo': True, 'fecha_ingreso_corral': date.today()}
                 )
                 if created:
                     creados += 1
@@ -206,10 +187,8 @@ def importar_excel(request):
                         animal.save()
                         Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
                         actualizados += 1
-
-            messages.success(request, f'¡Listo! {creados} nuevos, {actualizados} actualizados. Total activo: {Animal.objects.filter(activo=True).count()}')
-
+            total = Animal.objects.filter(activo=True).count()
+            messages.success(request, f'¡Listo! Se leyeron {len(df)} filas. {creados} nuevos, {actualizados} actualizados. Total activo: {total}')
         except Exception as e:
-            messages.error(request, f'Error al importar: {e} - Hoja: {xls.sheet_names}')
-
+            messages.error(request, f'Error al importar: {e}')
     return redirect('dashboard')

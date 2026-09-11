@@ -5,14 +5,49 @@ from.models import Animal, Corral, Vacuna, Venta, Movimiento
 from datetime import date
 
 # --- Form para que vacunas aparezcan con checkbox ---
-class AnimalForm(forms.ModelForm):
-    class Meta:
-        model = Animal
-        fields = ['numero_caravana','categoria','kg_ingreso','corral_actual','fecha_ingreso','vacunas_ingreso','activo']
-        widgets = {
-            'vacunas_ingreso': forms.CheckboxSelectMultiple()
-        }
+@admin.register(Animal)
 
+class AnimalAdmin(admin.ModelAdmin):
+    list_display = ('numero_caravana','categoria','kg_actual','corral_actual','fecha_ingreso_corral','dias_en_corral','listo_para','activo')
+    list_filter = ('corral_actual','categoria','activo')
+    list_per_page = 100
+    search_fields = ('numero_caravana',)
+    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
+
+    # 1. SACAMOS kg_actual del formulario
+    exclude = ('kg_actual',)
+
+    # 2. VACUNAS CON CHECKBOX para tildar varias
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "vacunas_ingreso":
+            kwargs["widget"] = forms.CheckboxSelectMultiple()
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    readonly_fields = ('fecha_ingreso_corral',)
+    inlines = [MovimientoInline]
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.kg_actual = obj.kg_ingreso
+            obj.fecha_ingreso_corral = date.today()
+            obj.fecha_ingreso = date.today()
+        else:
+            if 'corral_actual' in form.changed_data:
+                animal_viejo = Animal.objects.get(pk=obj.pk)
+                origen = animal_viejo.corral_actual
+                destino = obj.corral_actual
+                if origen!= destino:
+                    Movimiento.objects.create(
+                        animal=obj,
+                        corral_origen=origen,
+                        corral_destino=destino,
+                        peso_en_movimiento=obj.kg_actual,
+                        fecha=date.today()
+                    )
+                    obj.fecha_ingreso_corral = date.today()
+        super().save_model(request, obj, form, change)
+
+    #... deja el resto de tus funciones _mover_masivo y las actions igual...
 class MovimientoInline(admin.TabularInline):
     model = Movimiento
     extra = 0

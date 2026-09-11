@@ -18,10 +18,160 @@ body{background:#ece4d1}
 <!-- HEADER -->
 <div class="w-full bg-[#3a6a5a] flex flex-col md:flex-row md:items-center p-3 md:px-8 md:h-20 justify-between rounded-xl shadow-md gap-3">
   <div class="flex items-center gap-3 md:gap-5">
-    <img src="{% static 'gestion/logo.png' %}" alt="IngGaset" class="w-10 h-10 md:w-14 md:h-14 object-contain shrink-0 bg-[#f3f1c7] rounded-lg p-1.5">
+    <img src="{% static 'gestion/logo.png' %}" alt="IngGaset" class="w-10 h-10 md:w-14 md:h-14 object-contain shrink-0 rounded-lg">
     <div class="text-white leading-none">
       <div class="font-black text-lg md:text-xl">IngGaset</div>
       <div class="text- md:text-xs tracking-[0.2em] text-[#c7dcc5] font-bold mt-1">GESTION GANADERA</div>
     </div>
     <span class="md:hidden ml-auto bg-[#2e5443] text-[#c7dcc5] text- px-3 py-1.5 rounded-full">• SISTEMA OPERATIVO</span>
   </div>
+  <div class="flex flex-wrap gap-2 items-center justify-end">
+    <span class="hidden md:inline-flex bg-[#2e5443] text-[#c7dcc5] text-xs px-6 py-2.5 rounded-full">• SISTEMA OPERATIVO</span>
+    <form method="POST" action="{% url 'importar_excel' %}" enctype="multipart/form-data" id="form-importar-header">
+      {% csrf_token %}
+      <input type="file" name="archivo_excel" id="input-excel-header" accept=".xlsx,.xls" class="hidden" onchange="document.getElementById('form-importar-header').submit()">
+      <button type="button" onclick="document.getElementById('input-excel-header').click()" class="bg-white text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black hover:bg-[#f3f1c7] transition">📥 Importar Excel</button>
+    </form>
+    <a href="{% url 'informe_pdf' %}" class="bg-[#e11d48] text-white px-5 py-2.5 rounded-full text-xs font-black hover:bg-[#be123c] transition">📄 Informe PDF</a>
+    <a href="/admin/" class="bg-white text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black">Admin</a>
+  </div>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="bg-[#2e6a4a] text-white p-3 rounded-xl text-sm font-bold text-center">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<!-- STATS -->
+<div class="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3">
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+    <div class="text- font-black text-[#9c957f] tracking-widest">TOTAL ANIMALES</div>
+    <div class="text-2xl font-bold mt-1">{{total_animales}}</div>
+    <span class="mt-2 bg-[#d9e6c3] text-[#4a6b5a] text- px-3 py-1 rounded-full font-bold w-fit">Activos en corral</span>
+  </div>
+  <div class="bg-[#2e6a4a] text-white p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+    <div class="text- font-bold text-[#c7dcc5] tracking-widest">ALIMENTO TOTAL / DÍA</div>
+    <div class="text-2xl font-bold mt-1">{{total_alimento}} Kg</div>
+    <span class="mt-2 bg-[#1e4330] text-[#c7dcc5] text- px-3 py-1 rounded-full w-fit">Calculado por %</span>
+  </div>
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+    <div class="text- font-black text-[#9c957f] tracking-widest">VENTAS ACUMULADAS</div>
+    <div class="text-sm md:text-lg font-bold mt-1 truncate">{{ventas_count}} ventas • ${{total_facturado|floatformat:0}}</div>
+    <span class="mt-2 bg-[#d9e6c3] text-[#4a6b5a] text- px-3 py-1 rounded-full font-bold w-fit">{{total_listos}} LISTOS</span>
+  </div>
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl border-l-4 border-l-[#e85d6a] min-h-">
+    <div class="text- font-black text-[#9c957f] tracking-widest">BAJAS ACUMULADAS</div>
+    <div class="text-sm md:text-lg font-bold mt-1">{{bajas_count}} bajas • {{bajas_muerte}} muertes</div>
+    <span class="mt-2 bg-[#fde2e2] text-[#b94a3a] text- px-3 py-1 rounded-full font-black w-fit">BAJAS</span>
+  </div>
+</div>
+
+<form method="GET" class="bg-[#fffaf0] border border-[#e6dcc0] p-2 flex gap-2 rounded-xl">
+  <input name="q" value="{{q}}" placeholder="Buscar caravana..." class="flex-1 h-10 md:h-9 px-4 text-sm bg-white border border-[#e6dcc0] rounded-full outline-none">
+  <button class="h-10 md:h-9 px-6 bg-[#2e6a4a] text-white font-black text-xs rounded-full shrink-0">Buscar</button>
+</form>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+<div class="lg:col-span-5 space-y-2 order-1">
+  <div class="text- font-black text-[#9c957f] tracking-widest px-1">CORRALES • DETALLE REAL</div>
+  <div class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scroll-hide -mx-1 px-1">
+  {% for d in datos_corrales %}
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 rounded-xl min-w-[85%] lg:min-w-0 shrink-0 {% if d.listos %}border-l-4 border-l-[#e11d48]{% endif %}">
+    <div class="flex justify-between items-start gap-2">
+      <div class="flex-1">
+        <div class="font-black text-[#2d4a3a] text-sm">{{ d.corral.nombre_bonito }}</div>
+        <div class="text- text-[#9c957f] mt-1">{{ d.corral.peso_entrada|floatformat:0 }}→{{ d.corral.peso_salida|floatformat:0 }}kg • GDPV {{ d.corral.gdpv_esperado }} • {{ d.corral.dias_objetivo }}d • Cap {{d.corral.capacidad}}</div>
+        <div class="flex gap-3 mt-2 text-">
+          <span class="font-black">{{ d.count }} <span class="font-bold text-[#9c957f]">ANIM</span></span>
+          <span class="font-bold text-[#6b8a7a]">{{ d.promedio }} kg <span class="text-[#9c957f]">PROM</span></span>
+        </div>
+      </div>
+      <div class="shrink-0">
+        {% if d.listos %}
+          {% if d.corral.es_terminacion %}
+            <span class="bg-[#e11d48] text-white text- px-3 py-1.5 rounded-full font-black animate-pulse block text-center">{{ d.listos }} VENTA 🔥</span>
+          {% else %}
+            <span class="bg-[#e85d6a] text-white text- px-3 py-1.5 rounded-full font-black block text-center">{{ d.listos }} MOVER</span>
+          {% endif %}
+        {% else %}
+          <span class="bg-[#2e6a4a] text-white text- px-3 py-1.5 rounded-full font-black block text-center">{{ d.alimento }} kg/dia</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+
+<div class="lg:col-span-7 space-y-3 order-2">
+  <div class="text- font-black text-[#9c957f] tracking-widest px-1">RODEO ACTIVO • ANIMAL X ANIMAL</div>
+{% for a in animales_filtrados %}
+<div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 rounded-xl {% if a.listo_para == 'venta' %}border-2 border-[#e11d48] shadow-lg{% endif %}">
+<div class="flex justify-between items-start gap-2">
+  <div class="flex items-start gap-2 flex-1 min-w-0">
+    <span class="w-8 h-8 bg-[#2e6a4a] text-white flex items-center justify-center text- font-black rounded-full shrink-0 mt-0.5">{{a.numero_caravana|slice:":4"}}</span>
+    <div class="min-w-0">
+      <div class="font-black text-[#2d4a3a] text-sm truncate">Caravana {{a.numero_caravana}}</div>
+      <div class="flex gap-1 mt-1.5 flex-wrap">
+        <div class="bg-[#d9e6c3] text-[#2d4a3a] text- px-2 py-0.5 rounded-full font-bold">{{a.corral_actual.nombre_bonito}}</div>
+        <div class="bg-[#e8f5e9] text-[#2e6a4a] text- px-2 py-0.5 rounded-full font-black border border-[#c8e6c9]">📅 {{a.fecha_ingreso_corral|date:"d/m/Y"}} • {{a.dias_en_corral}}d en corral</div>
+        {% if a.categoria == 'hembra' %}<span class="bg-[#f9a8d4] text-[#831843] px-2.5 py-0.5 rounded-full text- font-black border border-[#fbcfe8]">HEMBRA</span>
+        {% elif a.categoria == 'vaquillona' %}<span class="bg-[#f9a8d4] text-[#831843] px-2.5 py-0.5 rounded-full text- font-black border border-[#fbcfe8]">VAQUILLONA</span>
+        {% elif a.categoria == 'vaca' %}<span class="bg-[#ec4899] text-white px-2.5 py-0.5 rounded-full text- font-black">VACA</span>
+        {% elif a.categoria == 'castrado' %}<span class="bg-[#bfdbfe] text-[#1e3a8a] px-2.5 py-0.5 rounded-full text- font-black border border-[#dbeafe]">CASTRADO</span>
+        {% elif a.categoria == 'novillo' %}<span class="bg-[#a7f3d0] text-[#065f46] px-2.5 py-0.5 rounded-full text- font-black border border-[#6ee7b7]">NOVILLO</span>
+        {% elif a.categoria == 'toro' %}<span class="bg-[#1e293b] text-white px-2.5 py-0.5 rounded-full text- font-black">TORO</span>
+        {% elif a.categoria == 'macho_entero' %}<span class="bg-[#f97316] text-white px-2.5 py-0.5 rounded-full text- font-black">MACHO ENTERO</span>
+        {% else %}<span class="bg-[#fef08a] text-[#854d0e] px-2.5 py-0.5 rounded-full text- font-black border border-[#fde68a]">MACHO</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="shrink-0">
+    {% if a.listo_para == 'venta' %}<span class="bg-[#e11d48] text-white text- px-3 py-1.5 rounded-full font-black animate-pulse block">🔥 VENTA</span>
+    {% elif a.listo_para == 'mover' %}<span class="bg-[#e85d6a] text-white text- px-3 py-1 rounded-full font-black block">MOVER</span>
+    {% else %}<span class="bg-[#f0e9d2] text-[#9c957f] text- px-3 py-1 rounded-full font-bold block text-center">Faltan {{a.kg_faltantes}}kg<br>{{a.dias_restantes_estimados}}d</span>{% endif %}
+  </div>
+</div>
+
+<div class="mt-3 flex gap-1 flex-wrap">{% for v in a.vacunas_ingreso.all %}<span class="text- bg-[#c7e9f5] text-[#1e4a5a] border border-[#a8d6e8] px-2.5 py-1 rounded-full font-black">✓ {{v.nombre}}</span>{% empty %}<span class="text- text-[#9c957f] border border-dashed px-2 py-1 rounded-full">SIN VACUNAS</span>{% endfor %}</div>
+
+<div class="grid grid-cols-3 gap-2 mt-3">
+  <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-2 text-center rounded-xl"><div class="text- font-black text-[#9c957f]">PESO</div><div class="text-sm font-bold text-[#6b8a7a]">{{a.kg_actual}} kg</div><div class="text- text-[#9c957f]">Obj {{a.corral_actual.peso_salida|floatformat:0}}kg</div></div>
+  <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-2 text-center rounded-xl"><div class="text- font-black text-[#9c957f]">EN CORRAL</div><div class="text-sm font-black {% if a.dias_en_corral > 30 %}text-[#e11d48]{% elif a.dias_en_corral > 15 %}text-[#e67e22]{% else %}text-[#2e6a4a]{% endif %}">{{a.dias_en_corral}} días</div><div class="text- text-[#9c957f] font-bold">desde {{a.fecha_ingreso_corral|date:"d/m/Y"}}</div></div>
+  <div class="bg-[#2e6a4a] text-white p-2 text-center rounded-xl"><div class="text- font-bold">RACIÓN</div><div class="text-sm font-black">{{a.alimento_diario_kg}} kg</div><div class="text- text-[#c7dcc5]">{{a.corral_actual.porcentaje_alimento}}% PV</div></div>
+</div>
+
+{% if a.movimientos.all %}
+<div class="mt-3 bg-white border border-[#e6dcc0] rounded-xl p-2">
+  <div class="text- font-black text-[#9c957f] tracking-widest mb-1">📍 HISTORIAL DE MOVIMIENTOS</div>
+  <div class="flex gap-1 flex-wrap">
+    {% for mov in a.movimientos.all|slice:":5" %}
+      <span class="text- bg-[#f0e9d2] border border-[#e6dcc0] px-2 py-1 rounded-full font-bold">
+        {{mov.fecha|date:"d/m/Y"}}: {% if mov.corral_origen %}{{mov.corral_origen.nombre_bonito}}{% else %}Ingreso{% endif %} → {{mov.corral_destino.nombre_bonito}} ({{mov.peso_en_movimiento|floatformat:0}}kg)
+      </span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="mt-3 space-y-2">
+  <form method="POST" action="{% url 'pesar_rapido' %}" class="flex gap-1 bg-white p-1.5 rounded-full border border-[#e6dcc0] items-center">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><input name="peso" placeholder="Peso kg" required class="flex-1 min-w-0 h-8 rounded-full border border-[#e6dcc0] px-3 text-xs bg-white font-bold outline-none"><input name="fecha" type="date" value="{% now 'Y-m-d' %}" class="w- md:w-32 h-8 rounded-full border border-[#e6dcc0] px-2 text- bg-[#fbf6e1] font-bold"><button class="h-8 px-4 rounded-full bg-[#2e6a4a] text-white font-black text-xs shrink-0">Pesar</button></form>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+    <form method="POST" action="{% url 'mover_rapido' %}" class="flex gap-1 bg-[#f0e9d2] p-1.5 rounded-full border border-[#e6dcc0]">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><select name="corral_destino" class="flex-1 min-w-0 h-8 rounded-full px-2 text-xs bg-white font-bold outline-none">{% for c in todos_los_corrales %}<option value="{{c.id}}" {% if c.id == a.corral_actual.id %}selected{% endif %}>{{c.nombre_bonito}}</option>{% endfor %}</select><button class="h-8 px-3 rounded-full bg-[#e8d9a0] font-black text-xs shrink-0">Mover</button></form>
+    <form method="POST" action="{% url 'baja_rapida' %}" class="flex gap-1 bg-[#fbe7e1] p-1.5 rounded-full border border-[#e6c0b8] items-center">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><select name="motivo" class="flex-1 h-8 rounded-full px-2 text-xs bg-white font-bold outline-none"><option value="muerte">Muerte</option><option value="descarte">Descarte</option><option value="enfermedad">Enfermedad</option><option value="otro">Otro</option></select><button class="h-8 px-4 rounded-full bg-[#b94a3a] text-white font-black text-xs shrink-0">Baja</button></form>
+  </div>
+  <form method="POST" action="{% url 'vender_rapido' %}" class="flex gap-1 p-1.5 rounded-full border items-center {% if a.listo_para == 'venta' %}bg-[#ffe4e6] border-[#e11d48] shadow-md{% else %}bg-[#dbeafe] border-[#93c5fd]{% endif %}">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><input name="kg_venta" type="number" step="0.1" value="{{a.kg_actual}}" class="w-20 h-8 rounded-full px-2 text-xs bg-white border border-[#e6dcc0] text-center font-bold shrink-0 outline-none"><input name="precio_kg" type="number" step="0.01" placeholder="$ / kg" required class="flex-1 min-w-0 h-8 rounded-full px-3 text-xs bg-white border border-[#e6dcc0] outline-none"><button class="h-8 px-5 rounded-full text-white font-black text-xs shrink-0 {% if a.listo_para == 'venta' %}bg-[#e11d48] animate-pulse shadow-lg{% else %}bg-[#2563eb]{% endif %}">Vender</button></form>
+</div>
+
+<button onclick="document.getElementById('graf-{{a.id}}').classList.toggle('hidden')" class="mt-3 w-full h-9 rounded-full bg-white border border-[#e6dcc0] font-black text-xs text-[#425d4d]">📈 Ver evolución de peso</button>
+<div id="graf-{{a.id}}" class="hidden mt-2 bg-white border border-[#e6dcc0] rounded-xl p-3"><canvas id="chart-{{a.id}}" height="100"></canvas></div>
+</div>
+{% empty %}<div class="bg-white p-8 text-center font-bold text-[#9c957f] rounded-xl">No hay animales</div>{% endfor %}</div>
+</div>
+
+<script>
+{% for a in animales_filtrados %}const el{{a.id}} = document.getElementById('chart-{{a.id}}'); if(el{{a.id}}){ new Chart(el{{a.id}}, {type:'line', data:{labels:[{% for p in a.pesada_set.all %}'{{p.fecha|date:"d/m"}}',{% endfor %}'Hoy'], datasets:[{label:'kg', data:[{% for p in a.pesada_set.all %}{{p.peso}},{% endfor %}{{a.kg_actual}}], borderColor:'{% if a.listo_para == "venta" %}#e11d48{% else %}#2e6a4a{% endif %}', backgroundColor:'{% if a.listo_para == "venta" %}#ffe4e6{% else %}#d9e6c3{% endif %}', tension:0.35, fill:true}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}}}});} {% endfor %}
+</script>
+</body>
+</html>

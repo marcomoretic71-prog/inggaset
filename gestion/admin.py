@@ -1,17 +1,7 @@
 ﻿from django import forms
 from django.contrib import admin
-from django.utils import timezone
 from.models import Animal, Corral, Vacuna, Venta, Movimiento
 from datetime import date
-
-# --- Form para que vacunas aparezcan con checkbox ---
-class AnimalForm(forms.ModelForm):
-    class Meta:
-        model = Animal
-        fields = ['numero_caravana','categoria','kg_ingreso','corral_actual','vacunas_ingreso']
-        widgets = {
-            'vacunas_ingreso': forms.CheckboxSelectMultiple
-        }
 
 class MovimientoInline(admin.TabularInline):
     model = Movimiento
@@ -20,11 +10,20 @@ class MovimientoInline(admin.TabularInline):
     can_delete = False
     ordering = ('-fecha',)
 
+# Form con checkboxes simples para vacunas
+class AnimalForm(forms.ModelForm):
+    class Meta:
+        model = Animal
+        fields = ['numero_caravana','categoria','kg_ingreso','corral_actual','vacunas_ingreso','fecha_ingreso','activo']
+        widgets = {
+            'vacunas_ingreso': forms.CheckboxSelectMultiple
+        }
+
 @admin.register(Corral)
 class CorralAdmin(admin.ModelAdmin):
     list_display = ('nombre_bonito','capacidad','porcentaje_alimento','peso_entrada','peso_salida','gdpv_esperado','dias_objetivo')
     list_editable = ('capacidad','porcentaje_alimento','peso_entrada','peso_salida','gdpv_esperado','dias_objetivo')
-    fields = ('nombre','capacidad','porcentaje_alimento','peso_entrada','peso_salida','gdpv_esperado')
+    fields = ('nombre','capacidad','porcentaje_alimento','peso_entrada','peso_salida','gdpv_esperado','dias_objetivo')
 
 @admin.register(Animal)
 class AnimalAdmin(admin.ModelAdmin):
@@ -33,8 +32,6 @@ class AnimalAdmin(admin.ModelAdmin):
     list_filter = ('corral_actual','categoria','activo')
     list_per_page = 100
     search_fields = ('numero_caravana',)
-    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
-    fields = ('numero_caravana','categoria','kg_ingreso','kg_actual','corral_actual','fecha_ingreso_corral','fecha_ingreso','vacunas_ingreso','activo')
     readonly_fields = ('fecha_ingreso_corral',)
     inlines = [MovimientoInline]
 
@@ -42,22 +39,6 @@ class AnimalAdmin(admin.ModelAdmin):
         if not change:
             obj.kg_actual = obj.kg_ingreso
             obj.fecha_ingreso_corral = date.today()
-            obj.fecha_ingreso = date.today()
-        else:
-            # Si cambió de corral, guardamos en el historial
-            if 'corral_actual' in form.changed_data:
-                animal_viejo = Animal.objects.get(pk=obj.pk)
-                origen = animal_viejo.corral_actual
-                destino = obj.corral_actual
-                if origen!= destino:
-                    Movimiento.objects.create(
-                        animal=obj,
-                        corral_origen=origen,
-                        corral_destino=destino,
-                        peso_en_movimiento=obj.kg_actual,
-                        fecha=date.today()
-                    )
-                    obj.fecha_ingreso_corral = date.today()
         super().save_model(request, obj, form, change)
 
     def get_corral(self, nombre):
@@ -81,17 +62,17 @@ class AnimalAdmin(admin.ModelAdmin):
                 animal.fecha_ingreso_corral = date.today()
                 animal.save()
                 count += 1
-        self.message_user(request, f'{count} animales movidos a {corral_destino.nombre_bonito} el {date.today().strftime("%d/%m/%Y")}')
+        self.message_user(request, f'{count} animales movidos a {corral_destino.nombre_bonito}')
 
-    @admin.action(description='Mover seleccionados a Recepción')
+    @admin.action(description='Mover a Recepción')
     def mover_a_recepcion(self, request, queryset): self._mover_masivo(request, queryset, 'recepcion')
-    @admin.action(description='Mover seleccionados a Recría 1')
+    @admin.action(description='Mover a Recría 1')
     def mover_a_recria_1(self, request, queryset): self._mover_masivo(request, queryset, 'recria_1')
-    @admin.action(description='Mover seleccionados a Recría 2')
+    @admin.action(description='Mover a Recría 2')
     def mover_a_recria_2(self, request, queryset): self._mover_masivo(request, queryset, 'recria_2')
-    @admin.action(description='Mover seleccionados a Terminación 1')
+    @admin.action(description='Mover a Terminación 1')
     def mover_a_terminacion_1(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_1')
-    @admin.action(description='Mover seleccionados a Terminación 2')
+    @admin.action(description='Mover a Terminación 2')
     def mover_a_terminacion_2(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_2')
 
 @admin.register(Venta)
@@ -109,7 +90,6 @@ class MovimientoAdmin(admin.ModelAdmin):
     search_fields = ('animal__numero_caravana',)
     date_hierarchy = 'fecha'
 
-# Orden del menú
 Venta._meta.verbose_name_plural = "03 Ventas"
 Vacuna._meta.verbose_name_plural = "04 Vacunas"
 Corral._meta.verbose_name_plural = "01 Corrals"

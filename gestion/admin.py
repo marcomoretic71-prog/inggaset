@@ -8,9 +8,9 @@ from datetime import date
 class AnimalForm(forms.ModelForm):
     class Meta:
         model = Animal
-        fields = ['numero_caravana','categoria','kg_ingreso','corral_actual','vacunas_ingreso']
+        fields = ['numero_caravana','categoria','kg_ingreso','corral_actual','fecha_ingreso','vacunas_ingreso','activo']
         widgets = {
-            'vacunas_ingreso': forms.CheckboxSelectMultiple
+            'vacunas_ingreso': forms.CheckboxSelectMultiple()
         }
 
 class MovimientoInline(admin.TabularInline):
@@ -34,7 +34,8 @@ class AnimalAdmin(admin.ModelAdmin):
     list_per_page = 100
     search_fields = ('numero_caravana',)
     actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
-    fields = ('numero_caravana','categoria','kg_ingreso','kg_actual','corral_actual','fecha_ingreso_corral','fecha_ingreso','vacunas_ingreso','activo')
+    # ACÁ SAQUÉ kg_actual para que no aparezca al cargar
+    fields = ('numero_caravana','categoria','kg_ingreso','corral_actual','fecha_ingreso_corral','fecha_ingreso','vacunas_ingreso','activo')
     readonly_fields = ('fecha_ingreso_corral',)
     inlines = [MovimientoInline]
 
@@ -44,7 +45,6 @@ class AnimalAdmin(admin.ModelAdmin):
             obj.fecha_ingreso_corral = date.today()
             obj.fecha_ingreso = date.today()
         else:
-            # Si cambió de corral, guardamos en el historial
             if 'corral_actual' in form.changed_data:
                 animal_viejo = Animal.objects.get(pk=obj.pk)
                 origen = animal_viejo.corral_actual

@@ -10,8 +10,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-xn$t0$#_$!%=$+gnm658ec#l*4-_il9(xf(w_!xn&fdzps0b4k'
 DEBUG = True
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    'https://inggaset-production.up.railway.app',
+    'https://*.up.railway.app',
+]
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 INSTALLED_APPS = [
     'gestion',
     'django.contrib.admin',

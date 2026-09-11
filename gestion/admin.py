@@ -1,53 +1,8 @@
 ﻿from django import forms
 from django.contrib import admin
-from django.utils import timezone
 from.models import Animal, Corral, Vacuna, Venta, Movimiento
 from datetime import date
 
-# --- Form para que vacunas aparezcan con checkbox ---
-@admin.register(Animal)
-
-class AnimalAdmin(admin.ModelAdmin):
-    list_display = ('numero_caravana','categoria','kg_actual','corral_actual','fecha_ingreso_corral','dias_en_corral','listo_para','activo')
-    list_filter = ('corral_actual','categoria','activo')
-    list_per_page = 100
-    search_fields = ('numero_caravana',)
-    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
-
-    # 1. SACAMOS kg_actual del formulario
-    exclude = ('kg_actual',)
-
-    # 2. VACUNAS CON CHECKBOX para tildar varias
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "vacunas_ingreso":
-            kwargs["widget"] = forms.CheckboxSelectMultiple()
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
-
-    readonly_fields = ('fecha_ingreso_corral',)
-    inlines = [MovimientoInline]
-
-    def save_model(self, request, obj, form, change):
-        if not change:
-            obj.kg_actual = obj.kg_ingreso
-            obj.fecha_ingreso_corral = date.today()
-            obj.fecha_ingreso = date.today()
-        else:
-            if 'corral_actual' in form.changed_data:
-                animal_viejo = Animal.objects.get(pk=obj.pk)
-                origen = animal_viejo.corral_actual
-                destino = obj.corral_actual
-                if origen!= destino:
-                    Movimiento.objects.create(
-                        animal=obj,
-                        corral_origen=origen,
-                        corral_destino=destino,
-                        peso_en_movimiento=obj.kg_actual,
-                        fecha=date.today()
-                    )
-                    obj.fecha_ingreso_corral = date.today()
-        super().save_model(request, obj, form, change)
-
-    #... deja el resto de tus funciones _mover_masivo y las actions igual...
 class MovimientoInline(admin.TabularInline):
     model = Movimiento
     extra = 0
@@ -63,14 +18,19 @@ class CorralAdmin(admin.ModelAdmin):
 
 @admin.register(Animal)
 class AnimalAdmin(admin.ModelAdmin):
-    form = AnimalForm
     list_display = ('numero_caravana','categoria','kg_actual','corral_actual','fecha_ingreso_corral','dias_en_corral','listo_para','activo')
     list_filter = ('corral_actual','categoria','activo')
     list_per_page = 100
     search_fields = ('numero_caravana',)
-    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
-    # ACÁ SAQUÉ kg_actual para que no aparezca al cargar
-    fields = ('numero_caravana','categoria','kg_ingreso','corral_actual','fecha_ingreso_corral','fecha_ingreso','vacunas_ingreso','activo')
+
+    # ACÁ ESTÁ EL ARREGLO
+    exclude = ('kg_actual',)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "vacunas_ingreso":
+            kwargs["widget"] = forms.CheckboxSelectMultiple()
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
     readonly_fields = ('fecha_ingreso_corral',)
     inlines = [MovimientoInline]
 
@@ -116,17 +76,17 @@ class AnimalAdmin(admin.ModelAdmin):
                 animal.fecha_ingreso_corral = date.today()
                 animal.save()
                 count += 1
-        self.message_user(request, f'{count} animales movidos a {corral_destino.nombre_bonito} el {date.today().strftime("%d/%m/%Y")}')
+        self.message_user(request, f'{count} animales movidos a {corral_destino.nombre_bonito}')
 
-    @admin.action(description='Mover seleccionados a Recepción')
+    @admin.action(description='Mover a Recepción')
     def mover_a_recepcion(self, request, queryset): self._mover_masivo(request, queryset, 'recepcion')
-    @admin.action(description='Mover seleccionados a Recría 1')
+    @admin.action(description='Mover a Recría 1')
     def mover_a_recria_1(self, request, queryset): self._mover_masivo(request, queryset, 'recria_1')
-    @admin.action(description='Mover seleccionados a Recría 2')
+    @admin.action(description='Mover a Recría 2')
     def mover_a_recria_2(self, request, queryset): self._mover_masivo(request, queryset, 'recria_2')
-    @admin.action(description='Mover seleccionados a Terminación 1')
+    @admin.action(description='Mover a Terminación 1')
     def mover_a_terminacion_1(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_1')
-    @admin.action(description='Mover seleccionados a Terminación 2')
+    @admin.action(description='Mover a Terminación 2')
     def mover_a_terminacion_2(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_2')
 
 @admin.register(Venta)
@@ -140,11 +100,7 @@ class VacunaAdmin(admin.ModelAdmin):
 @admin.register(Movimiento)
 class MovimientoAdmin(admin.ModelAdmin):
     list_display = ('animal','corral_origen','corral_destino','peso_en_movimiento','fecha')
-    list_filter = ('corral_destino','fecha','corral_origen')
-    search_fields = ('animal__numero_caravana',)
-    date_hierarchy = 'fecha'
 
-# Orden del menú
 Venta._meta.verbose_name_plural = "03 Ventas"
 Vacuna._meta.verbose_name_plural = "04 Vacunas"
 Corral._meta.verbose_name_plural = "01 Corrals"

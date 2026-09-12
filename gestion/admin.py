@@ -1,6 +1,6 @@
 ﻿from django import forms
 from django.contrib import admin
-from.models import Animal, Corral, Vacuna, Venta, Movimiento
+from .models import Animal, Corral, Vacuna, Venta, Movimiento
 from datetime import date
 
 class MovimientoInline(admin.TabularInline):
@@ -10,7 +10,6 @@ class MovimientoInline(admin.TabularInline):
     can_delete = False
     ordering = ('-fecha',)
 
-# Form con checkboxes simples para vacunas
 class AnimalForm(forms.ModelForm):
     class Meta:
         model = Animal
@@ -74,6 +73,8 @@ class AnimalAdmin(admin.ModelAdmin):
     def mover_a_terminacion_1(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_1')
     @admin.action(description='Mover a Terminación 2')
     def mover_a_terminacion_2(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_2')
+
+    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
 
 @admin.register(Venta)
 class VentaAdmin(admin.ModelAdmin):

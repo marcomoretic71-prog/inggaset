@@ -1,11 +1,11 @@
 from datetime import date
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Avg
+from django.db.models import Avg, Sum
 from django.http import HttpResponse
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
-from.models import Corral, Animal, Pesada, Movimiento, Venta, Baja, Vacuna
+from .models import Corral, Animal, Pesada, Movimiento, Venta, Baja, Vacuna
 import pandas as pd
 from django.contrib import messages
 
@@ -46,6 +46,17 @@ def dashboard(request):
             'corral': corral, 'count': anims.count(), 'promedio': round(prom, 1),
             'alimento': round(sum(a.alimento_diario_kg for a in anims), 1), 'listos': listos,
         })
+
+    # === CAJA: calcula saldo para mostrar en el boton del header ===
+    saldo_caja = None
+    try:
+        from caja.models import MovimientoCaja
+        ing = MovimientoCaja.objects.filter(tipo='INGRESO').aggregate(s=Sum('monto'))['s'] or 0
+        egr = MovimientoCaja.objects.filter(tipo='EGRESO').aggregate(s=Sum('monto'))['s'] or 0
+        saldo_caja = ing - egr
+    except Exception:
+        saldo_caja = None
+
     return render(request, 'gestion/dashboard.html', {
         'total_animales': total_animales, 'total_alimento': total_alimento, 'total_listos': total_listos,
         'datos_corrales': datos_corrales,
@@ -54,6 +65,7 @@ def dashboard(request):
         'ventas_count': Venta.objects.count(),
         'total_facturado': sum(v.kg_venta * v.precio_kg for v in Venta.objects.all()) if Venta.objects.exists() else 0,
         'bajas_count': Baja.objects.count(), 'bajas_muerte': Baja.objects.filter(motivo='muerte').count(), 'q': q,
+        'saldo_caja': saldo_caja,
     })
 
 def pesar_rapido(request):

@@ -33,6 +33,8 @@ body{background:#ece4d1}
       <button type="button" onclick="document.getElementById('input-excel-header').click()" class="bg-white text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black hover:bg-[#f3f1c7] transition">📥 Importar Excel</button>
     </form>
     <a href="{% url 'informe_pdf' %}" class="bg-[#e11d48] text-white px-5 py-2.5 rounded-full text-xs font-black hover:bg-[#be123c] transition">📄 Informe PDF</a>
+    <!-- BOTON CAJA NUEVO - NO MODIFICA NADA MAS -->
+    <a href="/caja/" class="bg-[#f3f1c7] text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black hover:bg-white transition shadow-sm border border-[#e6dcc0]">💰 Caja {% if saldo_caja %} $ {{ saldo_caja|floatformat:0 }}{% endif %}</a>
     <a href="/admin/" class="bg-white text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black">Admin</a>
   </div>
 </div>

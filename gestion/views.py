@@ -47,7 +47,7 @@ def dashboard(request):
             'alimento': round(sum(a.alimento_diario_kg for a in anims), 1), 'listos': listos,
         })
 
-    # === CAJA: calcula saldo para mostrar en el boton del header ===
+    # CAJA: saldo real usando tu modelo con responsable
     saldo_caja = None
     try:
         from caja.models import MovimientoCaja
@@ -173,7 +173,6 @@ def importar_excel(request):
                 if not caravana_raw or 'caravana' in caravana_raw.lower() or caravana_raw.lower() == 'nan':
                     continue
                 caravana = ''.join(filter(str.isdigit, caravana_raw))
-                # CORREGIDO: ahora acepta caravanas de 2 digitos en adelante
                 if not caravana or len(caravana) < 2:
                     continue
                 peso_raw = str(row.get('kilo', row.get('peso', '0'))).replace(',', '.')

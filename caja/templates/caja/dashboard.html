@@ -25,8 +25,8 @@
   .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   select,input{width:100%;padding:10px 12px;border-radius:20px;border:1px solid #00000015;background:white;font-size:13px;box-sizing:border-box}
   .btn-save{background:var(--green);color:white;border:0;padding:10px 22px;border-radius:20px;font-weight:700;cursor:pointer}
-  .list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #00000008}
-  .movs{max-height:400px;overflow:auto}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #00000008}
+  .movs{max-height:600px;overflow:auto}
   @media(max-width:900px){.grid3{grid-template-columns:1fr}.main{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.form-grid-2{grid-template-columns:1fr}}
 </style>
 </head>
@@ -83,7 +83,7 @@
         </div>
         <div class="form-grid-2">
           <select name="categoria" required>
-            <option value="OTROS">OTROS</option>
+            <option value="OTROS">OTROS - Seleccionar</option>
             <option value="VENTA_HACIENDA">VENTA DE HACIENDA</option>
             <option value="COMPRA_HACIENDA">COMPRA DE HACIENDA</option>
             <option value="SANIDAD">SANIDAD / VACUNAS</option>
@@ -92,109 +92,80 @@
             <option value="PERSONAL">PERSONAL / SUELDOS</option>
             <option value="MANTENIMIENTO">MANTENIMIENTO / REPUESTOS</option>
           </select>
-          <input type="text" name="descripcion" placeholder="Detalle opcional: ej. 200 lts gasoil, ivermectina...">
+          <input type="text" name="descripcion" placeholder="Detalle opcional: ej. 200 lts gasoil...">
         </div>
-        <input type="date" name="fecha" value="" style="margin-top:8px;max-width:160px">
       </form>
     </div>
 
-    <div class="card" style="margin-bottom:14px;display:flex;gap:8px">
-      <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap">
-        <select name="persona_filtro" onchange="this.form.submit()">
+    <div class="card" style="margin-bottom:14px;display:flex;gap:8px;align-items:center">
+      <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+        <select name="persona_filtro" onchange="this.form.submit()" style="flex:1">
           <option value="">Todas las personas</option>
           {% for p in personas %}
           <option value="{{ p.id }}" {% if persona_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
           {% endfor %}
         </select>
-        <select name="categoria" onchange="this.form.submit()">
-          <option value="">Todas categorías</option>
-          {% for code,label in categorias %}
-          <option value="{{ code }}">{{ label }}</option>
-          {% endfor %}
+        <select name="mes" onchange="this.form.submit()" style="flex:1">
+          <option value="">Todos los meses</option>
+          <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option>
+          <option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option>
+          <option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
-        {% if persona_filtro or categoria_filtro %}<a href="{% url 'caja_dashboard' %}" class="btn-light" style="border:1px solid #0001">Limpiar</a>{% endif %}
+        <a href="{% url 'caja_dashboard' %}" class="btn-light" style="border:1px solid #0001">Limpiar</a>
       </form>
     </div>
 
     <div class="card">
-      <div class="kpi-label" style="margin-bottom:10px">MOVIMIENTOS • ÚLTIMOS {{ movimientos|length }}</div>
+      <div class="kpi-label" style="margin-bottom:10px">MOVIMIENTOS • ÚLTIMOS 50</div>
       <div class="movs">
       {% for m in movimientos %}
         <div class="list-item">
-          <div>
-            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:{% if m.tipo == 'INGRESO' %}#d9e8dd{% else %}#fde8e5{% endif %};color:{% if m.tipo == 'INGRESO' %}#2d5a4a{% else %}#b94a3a{% endif %}">{{ m.tipo|first }}</span>
-            <span style="font-size:11px;opacity:.6;margin-left:6px">• {{ m.fecha|date:"d/m/Y" }} • {{ m.get_categoria_display }} {% if m.responsable %}• {{ m.responsable.nombre }}{% endif %}</span>
-            <div style="font-size:13px;margin-top:2px">{{ m.descripcion|default:"(sin detalle)" }}</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:{% if m.tipo == 'INGRESO' %}#d9e8dd{% else %}#fde8e5{% endif %};color:{% if m.tipo == 'INGRESO' %}#2d5a4a{% else %}#b94a3a{% endif %}">{{ m.tipo|first }}</div>
+            <div>
+              <div style="font-size:12px;font-weight:600">{{ m.get_categoria_display }} {% if m.responsable %}• {{ m.responsable.nombre }}{% endif %} <span style="opacity:.5">• {{ m.fecha|date:"d/m/Y" }}</span></div>
+              <div style="font-size:12px;opacity:.7">{{ m.descripcion|default:"(sin detalle)" }}</div>
+            </div>
           </div>
           <div style="text-align:right">
             <div style="font-weight:800;color:{% if m.tipo == 'INGRESO' %}#2d5a4a{% else %}#b94a3a{% endif %}">{% if m.tipo == 'EGRESO' %}-{% endif %}${{ m.monto|floatformat:0 }}</div>
-            <div style="font-size:9px;opacity:.5">{{ m.get_tipo_display|upper }}</div>
+            <div style="font-size:9px;opacity:.5">{{ m.tipo }}</div>
           </div>
         </div>
       {% empty %}
-        <p style="opacity:.5;font-size:13px">No hay movimientos todavía.</p>
+        <p style="opacity:.5;font-size:13px">No hay movimientos.</p>
       {% endfor %}
       </div>
     </div>
   </div>
 
   <div>
-    <div class="card" style="margin-bottom:14px">
-      <div class="kpi-label" style="margin-bottom:8px">GASTOS POR PERSONA</div>
-      <canvas id="chartPersona" height="220"></canvas>
-      <div style="margin-top:10px">
-        {% for e in egresos_por_persona %}
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #0001">
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:6px"></span>{{ e.persona__nombre }}</span>
-          <b>${{ e.total|floatformat:0 }}</b>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px">
-      <div class="kpi-label" style="margin-bottom:8px">GASTOS POR CATEGORIA</div>
-      <canvas id="chartCat" height="220"></canvas>
-    </div>
-
-    <div class="card" style="margin-bottom:14px">
-      <div class="kpi-label" style="margin-bottom:8px">BALANCE POR PERSONA</div>
-      {% for b in balance_por_persona %}
-      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:white;border-radius:20px;margin-bottom:6px;border:1px solid #00000008">
-        <span style="font-size:13px;font-weight:600">{{ b.persona__nombre }}</span>
-        <span style="font-size:13px;font-weight:800;color:{% if b.total < 0 %}#b94a3a{% else %}#2d5a4a{% endif %}">${{ b.total|floatformat:0 }}</span>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div class="card" style="background:var(--green);color:#e8f5e9">
-      <div style="font-size:11px;font-weight:700">TIP: Usá las categorías</div>
-      <div style="font-size:11px;margin-top:4px;opacity:.9;line-height:1.4">Ahora no escribís más. Elegís COMBUSTIBLE, SANIDAD, etc. y el sistema te arma los gráficos solo. El saldo es: Ingresos - Egresos.</div>
+    <div class="card">
+      <div class="kpi-label" style="margin-bottom:12px">GASTOS POR PERSONA</div>
+      <canvas id="chartPersona" height="300"></canvas>
+      <div id="legend" style="margin-top:14px"></div>
     </div>
   </div>
 </div>
 
 <script>
-const ctxP = document.getElementById('chartPersona');
-if(ctxP){
-  new Chart(ctxP, {
+const egresos = [
+  {% for e in egresos_por_persona %}{label:'{{ e.persona__nombre }}', val:{{ e.total }}},{% endfor %}
+];
+const ctx = document.getElementById('chartPersona');
+if(ctx && egresos.length>0){
+  new Chart(ctx, {
     type:'doughnut',
     data:{
-      labels:[{% for e in egresos_por_persona %}'{{ e.persona__nombre }}',{% endfor %}],
-      datasets:[{data:[{% for e in egresos_por_persona %}{{ e.total }},{% endfor %}],backgroundColor:['#2d5a4a','#5a8a6a','#8ab49a','#c2d9c7','#f4a261','#e76f51','#2a9d8f','#264653'],borderWidth:0}]
+      labels: egresos.map(e=>e.label),
+      datasets:[{data: egresos.map(e=>e.val), backgroundColor:['#2d5a4a','#4a7a6a','#6a9a7a','#8ab49a','#a8c9af','#c2d9c7','#e8d5a3','#f4a261'], borderWidth:0, hoverOffset:6}]
     },
-    options:{cutout:'68%',plugins:{legend:{display:false}}}
+    options:{cutout:'70%', plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){return c.label+': $'+c.raw.toLocaleString()}}}} }
   });
-}
-const ctxC = document.getElementById('chartCat');
-if(ctxC){
-  new Chart(ctxC, {
-    type:'bar',
-    data:{
-      labels:[{% for e in egresos_por_categoria %}'{{ e.categoria }}',{% endfor %}],
-      datasets:[{data:[{% for e in egresos_por_categoria %}{{ e.total }},{% endfor %}],backgroundColor:'#2d5a4a'}]
-    },
-    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{display:false}}}}
+  const legend = document.getElementById('legend');
+  egresos.forEach((e,i)=>{
+    const colors = ['#2d5a4a','#4a7a6a','#6a9a7a','#8ab49a','#a8c9af','#c2d9c7','#e8d5a3','#f4a261'];
+    legend.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #00000006"><div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;background:${colors[i%colors.length]};display:inline-block"></span><span style="font-size:13px">${e.label}</span></div><b style="font-size:13px">$${e.val.toLocaleString()}</b></div>`;
   });
 }
 </script>

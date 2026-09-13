@@ -1,150 +1,203 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Caja - IngGaset</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caja Chica - IngGaset</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{background:#ece4d1}
+  :root{--green:#2d5a4a;--beige:#f5efe3;--card:#fffdf7;--red:#b94a3a;--green-light:#d9e8dd}
+  body{background:var(--beige);font-family:Inter,system-ui,sans-serif;margin:0;padding:20px;color:#2b2b2b}
+  .header{background:var(--green);color:white;border-radius:16px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .header h1{margin:0;font-size:18px;letter-spacing:.5px}
+  .header p{margin:2px 0 0 0;opacity:.7;font-size:10px;letter-spacing:1.5px}
+  .btn-light{background:white;color:var(--green);border:0;padding:8px 16px;border-radius:20px;font-weight:700;cursor:pointer;text-decoration:none;font-size:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 2px 0 #00000008;border:1px solid #00000006}
+  .kpi-label{font-size:10px;letter-spacing:1.2px;opacity:.6;font-weight:700}
+  .kpi-val{font-size:28px;font-weight:800;margin:6px 0}
+  .kpi-val.green{color:var(--green)} .kpi-val.red{color:var(--red)}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+  .pill.green{background:var(--green-light);color:var(--green)} .pill.red{background:#fde8e5;color:var(--red)}
+  .saldo-card{background:var(--green);color:white}
+  .main{display:grid;grid-template-columns:1.3fr .7fr;gap:14px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px}
+  .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  select,input{width:100%;padding:10px 12px;border-radius:20px;border:1px solid #00000015;background:white;font-size:13px;box-sizing:border-box}
+  .btn-save{background:var(--green);color:white;border:0;padding:10px 22px;border-radius:20px;font-weight:700;cursor:pointer}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #00000008}
+  .movs{max-height:400px;overflow:auto}
+  @media(max-width:900px){.grid3{grid-template-columns:1fr}.main{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.form-grid-2{grid-template-columns:1fr}}
 </style>
 </head>
-<body class="p-2 md:p-4 max-w-7xl mx-auto space-y-4">
+<body>
 
-<!-- HEADER -->
-<div class="w-full bg-[#3a6a5a] flex flex-col md:flex-row md:items-center p-3 md:px-8 md:h-20 justify-between rounded-xl shadow-md gap-3">
-  <div class="flex items-center gap-3">
-    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-black text-[#3a6a5a]">💰</div>
-    <div class="text-white leading-none">
-      <div class="font-black text-lg">CAJA CHICA</div>
-      <div class="text-[10px] tracking-[0.2em] text-[#c7dcc5] font-bold mt-1">INGGASET • INGRESOS Y EGRESOS</div>
-    </div>
+<div class="header">
+  <div style="display:flex;gap:10px;align-items:center">
+    <div style="background:white;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center">💰</div>
+    <div><h1>CAJA CHICA</h1><p>INGGASET - INGRESOS Y EGRESOS</p></div>
   </div>
-  <div class="flex gap-2">
-    <a href="/" class="bg-[#2e5443] text-[#c7dcc5] text-xs px-5 py-2.5 rounded-full font-bold">← Rodeo</a>
-    <a href="/admin/" class="bg-white text-[#3a6a5a] px-5 py-2.5 rounded-full text-xs font-black">Admin</a>
+  <div style="display:flex;gap:8px">
+    <a class="btn-light" href="/" style="background:#ffffff20;color:white;border:1px solid #ffffff30">← Rodeo</a>
+    <a class="btn-light" href="/admin/">Admin</a>
   </div>
 </div>
 
-<!-- BALANCE CARDS -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-5 rounded-2xl shadow-sm">
-    <div class="text-[10px] font-black text-[#9c957f] tracking-widest">INGRESOS</div>
-    <div class="text-3xl font-black text-[#2e6a4a] mt-2">${{ total_ingresos|floatformat:0 }}</div>
-    <div class="mt-2 text-[11px] bg-[#d9e6c3] text-[#4a6b5a] px-3 py-1 rounded-full font-bold w-fit">+ {{ ingresos_count }} movimientos</div>
+<div class="grid3">
+  <div class="card">
+    <div class="kpi-label">INGRESOS</div>
+    <div class="kpi-val green">${{ total_ingresos|floatformat:0 }}</div>
+    <span class="pill green">+ {{ ingresos_count }} movimientos</span>
   </div>
-  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-5 rounded-2xl shadow-sm">
-    <div class="text-[10px] font-black text-[#9c957f] tracking-widest">EGRESOS</div>
-    <div class="text-3xl font-black text-[#b94a3a] mt-2">- ${{ total_egresos|floatformat:0 }}</div>
-    <div class="mt-2 text-[11px] bg-[#fde2e2] text-[#b94a3a] px-3 py-1 rounded-full font-black w-fit">- {{ egresos_count }} movimientos</div>
+  <div class="card">
+    <div class="kpi-label">EGRESOS</div>
+    <div class="kpi-val red">- ${{ total_egresos|floatformat:0 }}</div>
+    <span class="pill red">- {{ egresos_count }} movimientos</span>
   </div>
-  <div class="bg-[#2e6a4a] text-white p-5 rounded-2xl shadow-md relative overflow-hidden">
-    <div class="text-[10px] font-bold text-[#c7dcc5] tracking-widest">SALDO ACTUAL</div>
-    <div class="text-4xl font-black mt-2">${{ saldo|floatformat:0 }}</div>
-    <div class="mt-2 text-[11px] bg-[#1e4330] text-[#c7dcc5] px-3 py-1 rounded-full w-fit">{% if saldo >= 0 %}✔ En positivo{% else %}⚠ En negativo{% endif %} • {{ movimientos.count }} ops</div>
-    <div class="absolute -right-6 -bottom-6 text-7xl opacity-10">💵</div>
+  <div class="card saldo-card">
+    <div class="kpi-label" style="color:#ffffff99">SALDO ACTUAL</div>
+    <div class="kpi-val" style="color:white">${{ saldo|floatformat:0 }}</div>
+    <span class="pill" style="background:#00000030;color:#ffffffcc">{% if saldo < 0 %}⚠️ En negativo{% else %}✅ Positivo{% endif %} • {{ ingresos_count|add:egresos_count }} ops</span>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-  <!-- FORM + LIST -->
-  <div class="lg:col-span-7 space-y-3">
-    <!-- FORM NUEVO MOVIMIENTO -->
-    <div class="bg-[#fffaf0] border border-[#e6dcc0] p-4 rounded-2xl">
-      <div class="text-[10px] font-black text-[#9c957f] tracking-widest mb-3">+ NUEVO MOVIMIENTO</div>
-      <form method="POST" class="grid grid-cols-1 md:grid-cols-12 gap-2">
+<div class="main">
+  <div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="kpi-label" style="margin-bottom:10px">+ NUEVO MOVIMIENTO</div>
+      <form method="POST">
         {% csrf_token %}
-        <select name="tipo" class="md:col-span-3 h-10 rounded-full border border-[#e6dcc0] px-3 text-xs font-bold bg-white">
-          <option value="INGRESO">INGRESO +</option>
-          <option value="EGRESO" selected>EGRESO -</option>
-        </select>
-        <select name="persona" class="md:col-span-3 h-10 rounded-full border border-[#e6dcc0] px-3 text-xs font-bold bg-white">
-          {% for p in personas %}<option value="{{p.id}}">{{p.nombre}}</option>{% endfor %}
-        </select>
-        <input name="monto" type="number" step="0.01" placeholder="$ Monto" required class="md:col-span-3 h-10 rounded-full border border-[#e6dcc0] px-4 text-sm font-bold bg-white outline-none">
-        <button class="md:col-span-3 h-10 rounded-full bg-[#2e6a4a] text-white font-black text-xs">Guardar</button>
-        <input name="descripcion" placeholder="Descripción: gasoil, veterinaria, repuestos..." class="md:col-span-12 h-10 rounded-full border border-[#e6dcc0] px-4 text-sm bg-white outline-none">
+        <div class="form-grid">
+          <select name="tipo" required>
+            <option value="EGRESO">EGRESO -</option>
+            <option value="INGRESO">INGRESO +</option>
+          </select>
+          <select name="responsable" required>
+            <option value="">Quién?</option>
+            {% for p in personas %}
+            <option value="{{ p.id }}">{{ p.nombre }}</option>
+            {% endfor %}
+          </select>
+          <input type="number" step="0.01" name="monto" placeholder="$ Monto" required>
+          <button class="btn-save" type="submit">Guardar</button>
+        </div>
+        <div class="form-grid-2">
+          <select name="categoria" required>
+            <option value="OTROS">OTROS</option>
+            <option value="VENTA_HACIENDA">VENTA DE HACIENDA</option>
+            <option value="COMPRA_HACIENDA">COMPRA DE HACIENDA</option>
+            <option value="SANIDAD">SANIDAD / VACUNAS</option>
+            <option value="ALIMENTACION">ALIMENTACIÓN</option>
+            <option value="COMBUSTIBLE">COMBUSTIBLE / GASOIL</option>
+            <option value="PERSONAL">PERSONAL / SUELDOS</option>
+            <option value="MANTENIMIENTO">MANTENIMIENTO / REPUESTOS</option>
+          </select>
+          <input type="text" name="descripcion" placeholder="Detalle opcional: ej. 200 lts gasoil, ivermectina...">
+        </div>
+        <input type="date" name="fecha" value="" style="margin-top:8px;max-width:160px">
       </form>
     </div>
 
-    <!-- FILTROS -->
-    <form method="GET" class="flex gap-2 overflow-x-auto">
-      <select name="persona_filtro" onchange="this.form.submit()" class="h-9 rounded-full border border-[#e6dcc0] px-4 text-xs font-bold bg-white">
-        <option value="">Todas las personas</option>
-        {% for p in personas %}<option value="{{p.id}}" {% if persona_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{p.nombre}}</option>{% endfor %}
-      </select>
-      <select name="mes" onchange="this.form.submit()" class="h-9 rounded-full border border-[#e6dcc0] px-4 text-xs font-bold bg-white">
-        <option value="">Todos los meses</option>
-        <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-        <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-      </select>
-      <a href="/caja/" class="h-9 px-4 bg-white border border-[#e6dcc0] rounded-full text-xs font-black flex items-center">Limpiar</a>
-    </form>
+    <div class="card" style="margin-bottom:14px;display:flex;gap:8px">
+      <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap">
+        <select name="persona_filtro" onchange="this.form.submit()">
+          <option value="">Todas las personas</option>
+          {% for p in personas %}
+          <option value="{{ p.id }}" {% if persona_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+          {% endfor %}
+        </select>
+        <select name="categoria" onchange="this.form.submit()">
+          <option value="">Todas categorías</option>
+          {% for code,label in categorias %}
+          <option value="{{ code }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if persona_filtro or categoria_filtro %}<a href="{% url 'caja_dashboard' %}" class="btn-light" style="border:1px solid #0001">Limpiar</a>{% endif %}
+      </form>
+    </div>
 
-    <!-- LISTA -->
-    <div class="bg-[#fffaf0] border border-[#e6dcc0] rounded-2xl overflow-hidden">
-      <div class="p-3 text-[10px] font-black text-[#9c957f] tracking-widest">MOVIMIENTOS • ÚLTIMOS 50</div>
+    <div class="card">
+      <div class="kpi-label" style="margin-bottom:10px">MOVIMIENTOS • ÚLTIMOS {{ movimientos|length }}</div>
+      <div class="movs">
       {% for m in movimientos %}
-      <div class="flex items-center justify-between p-3 border-t border-[#e6dcc0] hover:bg-white transition">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black {% if m.tipo == 'INGRESO' %}bg-[#d9e6c3] text-[#2e6a4a]{% else %}bg-[#fde2e2] text-[#b94a3a]{% endif %}">{% if m.tipo == 'INGRESO' %}+{% else %}-{% endif %}</div>
+        <div class="list-item">
           <div>
-            <div class="text-sm font-bold text-[#2d4a3a]">{{ m.descripcion }}</div>
-            <div class="text-[11px] text-[#9c957f]">{{ m.persona.nombre }} • {{ m.fecha|date:"d/m/Y" }}</div>
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:{% if m.tipo == 'INGRESO' %}#d9e8dd{% else %}#fde8e5{% endif %};color:{% if m.tipo == 'INGRESO' %}#2d5a4a{% else %}#b94a3a{% endif %}">{{ m.tipo|first }}</span>
+            <span style="font-size:11px;opacity:.6;margin-left:6px">• {{ m.fecha|date:"d/m/Y" }} • {{ m.get_categoria_display }} {% if m.responsable %}• {{ m.responsable.nombre }}{% endif %}</span>
+            <div style="font-size:13px;margin-top:2px">{{ m.descripcion|default:"(sin detalle)" }}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:800;color:{% if m.tipo == 'INGRESO' %}#2d5a4a{% else %}#b94a3a{% endif %}">{% if m.tipo == 'EGRESO' %}-{% endif %}${{ m.monto|floatformat:0 }}</div>
+            <div style="font-size:9px;opacity:.5">{{ m.get_tipo_display|upper }}</div>
           </div>
         </div>
-        <div class="text-right">
-          <div class="text-sm font-black {% if m.tipo == 'INGRESO' %}text-[#2e6a4a]{% else %}text-[#b94a3a]{% endif %}">{% if m.tipo == 'EGRESO' %}-{% endif %}${{ m.monto|floatformat:0 }}</div>
-          <div class="text-[10px] text-[#9c957f]">{{ m.tipo }}</div>
-        </div>
-      </div>
       {% empty %}
-      <div class="p-8 text-center text-[#9c957f] font-bold text-sm">No hay movimientos todavía. ¡Cargá el primero arriba!</div>
+        <p style="opacity:.5;font-size:13px">No hay movimientos todavía.</p>
       {% endfor %}
+      </div>
     </div>
   </div>
 
-  <!-- STATS -->
-  <div class="lg:col-span-5 space-y-3">
-    <div class="bg-[#fffaf0] border border-[#e6dcc0] p-4 rounded-2xl">
-      <div class="text-[10px] font-black text-[#9c957f] tracking-widest mb-3">GASTOS POR PERSONA</div>
+  <div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="kpi-label" style="margin-bottom:8px">GASTOS POR PERSONA</div>
       <canvas id="chartPersona" height="220"></canvas>
-    </div>
-    <div class="bg-[#fffaf0] border border-[#e6dcc0] p-4 rounded-2xl">
-      <div class="text-[10px] font-black text-[#9c957f] tracking-widest mb-2">BALANCE MENSUAL</div>
-      <div class="space-y-2">
-        {% for item in balance_por_persona %}
-        <div class="flex justify-between items-center bg-white border border-[#e6dcc0] rounded-full px-4 py-2">
-          <span class="text-xs font-bold">{{ item.persona__nombre }}</span>
-          <span class="text-xs font-black {% if item.total < 0 %}text-[#b94a3a]{% else %}text-[#2e6a4a]{% endif %}">${{ item.total|floatformat:0 }}</span>
+      <div style="margin-top:10px">
+        {% for e in egresos_por_persona %}
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #0001">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:6px"></span>{{ e.persona__nombre }}</span>
+          <b>${{ e.total|floatformat:0 }}</b>
         </div>
         {% endfor %}
       </div>
     </div>
-    <div class="bg-[#2e6a4a] text-white p-4 rounded-2xl text-[11px] leading-relaxed">
-      <b>TIP:</b> Usá INGRESO cuando entra plata (venta de cuero, devolución) y EGRESO para todo gasto. El saldo se calcula solo: <code>Ingresos - Egresos</code>.
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="kpi-label" style="margin-bottom:8px">GASTOS POR CATEGORIA</div>
+      <canvas id="chartCat" height="220"></canvas>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="kpi-label" style="margin-bottom:8px">BALANCE POR PERSONA</div>
+      {% for b in balance_por_persona %}
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:white;border-radius:20px;margin-bottom:6px;border:1px solid #00000008">
+        <span style="font-size:13px;font-weight:600">{{ b.persona__nombre }}</span>
+        <span style="font-size:13px;font-weight:800;color:{% if b.total < 0 %}#b94a3a{% else %}#2d5a4a{% endif %}">${{ b.total|floatformat:0 }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="background:var(--green);color:#e8f5e9">
+      <div style="font-size:11px;font-weight:700">TIP: Usá las categorías</div>
+      <div style="font-size:11px;margin-top:4px;opacity:.9;line-height:1.4">Ahora no escribís más. Elegís COMBUSTIBLE, SANIDAD, etc. y el sistema te arma los gráficos solo. El saldo es: Ingresos - Egresos.</div>
     </div>
   </div>
 </div>
 
 <script>
-const ctx = document.getElementById('chartPersona');
-if(ctx){
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: [{% for b in egresos_por_persona %}'{{b.persona__nombre}}',{% endfor %}],
-      datasets: [{
-        data: [{% for b in egresos_por_persona %}{{b.total}},{% endfor %}],
-        backgroundColor: ['#2e6a4a','#e11d48','#e67e22','#2563eb','#8b5cf6','#06b6d4'],
-        borderWidth: 0
-      }]
+const ctxP = document.getElementById('chartPersona');
+if(ctxP){
+  new Chart(ctxP, {
+    type:'doughnut',
+    data:{
+      labels:[{% for e in egresos_por_persona %}'{{ e.persona__nombre }}',{% endfor %}],
+      datasets:[{data:[{% for e in egresos_por_persona %}{{ e.total }},{% endfor %}],backgroundColor:['#2d5a4a','#5a8a6a','#8ab49a','#c2d9c7','#f4a261','#e76f51','#2a9d8f','#264653'],borderWidth:0}]
     },
-    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' } } } }, cutout: '60%' }
+    options:{cutout:'68%',plugins:{legend:{display:false}}}
+  });
+}
+const ctxC = document.getElementById('chartCat');
+if(ctxC){
+  new Chart(ctxC, {
+    type:'bar',
+    data:{
+      labels:[{% for e in egresos_por_categoria %}'{{ e.categoria }}',{% endfor %}],
+      datasets:[{data:[{% for e in egresos_por_categoria %}{{ e.total }},{% endfor %}],backgroundColor:'#2d5a4a'}]
+    },
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{display:false}}}}
   });
 }
 </script>
+
 </body>
 </html>

@@ -104,10 +104,30 @@ def vender_rapido(request):
         try:
             kg = float(request.POST.get('kg_venta'))
             precio = float(request.POST.get('precio_kg'))
+            total = kg * precio
+            
+            # 1. Crea la venta
             Venta.objects.create(animal=animal, kg_venta=kg, precio_kg=precio, fecha=date.today())
             animal.activo = False
             animal.save()
-        except: pass
+
+            # 2. AUTO: Crea el INGRESO en Caja
+            try:
+                from caja.models import MovimientoCaja, Persona
+                responsable_default = Persona.objects.first()
+                if responsable_default:
+                    MovimientoCaja.objects.create(
+                        fecha=date.today(),
+                        tipo='INGRESO',
+                        categoria='VENTA_HACIENDA',
+                        monto=total,
+                        responsable=responsable_default,
+                        descripcion=f"Venta {animal.numero_caravana} - {kg}kg x ${precio}/kg"
+                    )
+            except Exception as e:
+                print(f"Error caja: {e}")
+        except:
+            pass
     return redirect('dashboard')
 
 def baja_rapida(request):

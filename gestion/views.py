@@ -16,6 +16,7 @@ def _asegurar_corrales():
         ('recria_2', 50, 2.0, 150, 220, 0.8),
         ('terminacion_1', 50, 3.0, 220, 400, 1.3),
         ('terminacion_2', 50, 3.0, 180, 330, 1.4),
+        ('venta', 500, 0, 0, 0, 0.1),
     ]
     for nombre, cap, pct, pe, ps, gdpv in datos:
         c, _ = Corral.objects.get_or_create(nombre=nombre, defaults={'capacidad':cap})
@@ -24,8 +25,12 @@ def _asegurar_corrales():
         c.peso_entrada = pe
         c.peso_salida = ps
         c.gdpv_esperado = gdpv
-        c.kg_objetivo = int(ps)
-        c.dias_objetivo = int((ps - pe) / gdpv) if gdpv else 30
+        if nombre == 'venta':
+            c.kg_objetivo = 0
+            c.dias_objetivo = 0
+        else:
+            c.kg_objetivo = int(ps)
+            c.dias_objetivo = int((ps - pe) / gdpv) if gdpv else 30
         c.save()
 
 def dashboard(request):
@@ -40,14 +45,15 @@ def dashboard(request):
     for corral in Corral.objects.all().order_by('nombre'):
         anims = base.filter(corral_actual=corral)
         prom = anims.aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
-        listos = sum(1 for a in anims if a.listo_para_mover)
-        total_listos += listos
+        listos = sum(1 for a in anims if a.listo_para == 'venta' or a.listo_para == 'mover')
+        # contar solo los que ya estan para venta para el total_listos
+        listos_venta = sum(1 for a in anims if a.listo_para == 'venta')
+        total_listos += listos_venta
         datos_corrales.append({
             'corral': corral, 'count': anims.count(), 'promedio': round(prom, 1),
             'alimento': round(sum(a.alimento_diario_kg for a in anims), 1), 'listos': listos,
         })
 
-    # CAJA: saldo real usando tu modelo con responsable
     saldo_caja = None
     try:
         from caja.models import MovimientoCaja
@@ -63,7 +69,7 @@ def dashboard(request):
         'animales_filtrados': filtrados.select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('fecha_ingreso_corral', 'numero_caravana'),
         'todos_los_corrales': Corral.objects.all().order_by('nombre'),
         'ventas_count': Venta.objects.count(),
-        'total_facturado': sum(v.kg_venta * v.precio_kg for v in Venta.objects.all()) if Venta.objects.exists() else 0,
+        'total_facturado': sum(float(v.kg_venta) * float(v.precio_kg) for v in Venta.objects.all()) if Venta.objects.exists() else 0,
         'bajas_count': Baja.objects.count(), 'bajas_muerte': Baja.objects.filter(motivo='muerte').count(), 'q': q,
         'saldo_caja': saldo_caja,
     })
@@ -104,32 +110,15 @@ def vender_rapido(request):
         try:
             kg = float(request.POST.get('kg_venta'))
             precio = float(request.POST.get('precio_kg'))
-            total = kg * precio
-            
-            # 1. Crea la venta
+            # Solo crea la venta, la caja la crea automaticamente el modelo Venta
             Venta.objects.create(animal=animal, kg_venta=kg, precio_kg=precio, fecha=date.today())
             animal.activo = False
             animal.save()
-
-            # 2. AUTO: Crea el INGRESO en Caja
-            try:
-                from caja.models import MovimientoCaja, Persona
-                responsable_default = Persona.objects.first()
-                if responsable_default:
-                    MovimientoCaja.objects.create(
-                        fecha=date.today(),
-                        tipo='INGRESO',
-                        categoria='VENTA_HACIENDA',
-                        monto=total,
-                        responsable=responsable_default,
-                        descripcion=f"Venta {animal.numero_caravana} - {kg}kg x ${precio}/kg"
-                    )
-            except Exception as e:
-                print(f"Error caja: {e}")
-        except:
-            pass
+        except Exception as e:
+            print(f"Error venta: {e}")
     return redirect('dashboard')
 
+    
 def baja_rapida(request):
     if request.method == 'POST':
         animal = get_object_or_404(Animal, id=request.POST.get('animal_id'))
@@ -200,14 +189,15 @@ def importar_excel(request):
                 except: peso = 80
                 if peso <= 0: peso = 80
                 sexo = str(row.get('sexo', '')).lower()
-                if 'h' in sexo or 'f' in sexo: categoria = 'vaquillona'
+                if 'h' in sexo or 'f' in sexo: categoria = 'hembra'
+                elif 'mej' in sexo: categoria = 'mej'
                 elif 'castr' in sexo: categoria = 'novillo'
                 elif 'toro' in sexo: categoria = 'toro'
                 elif 'vaca' in sexo: categoria = 'vaca'
                 else: categoria = 'ternero'
                 animal, created = Animal.objects.update_or_create(
                     numero_caravana=caravana,
-                    defaults={'kg_actual': peso, 'categoria': categoria, 'corral_actual': corral_default, 'activo': True, 'fecha_ingreso_corral': date.today()}
+                    defaults={'kg_actual': peso, 'kg_ingreso': peso, 'categoria': categoria, 'corral_actual': corral_default, 'activo': True, 'fecha_ingreso_corral': date.today()}
                 )
                 if created:
                     creados += 1

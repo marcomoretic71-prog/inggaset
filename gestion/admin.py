@@ -1,6 +1,7 @@
 ﻿from django import forms
 from django.contrib import admin
-from .models import Animal, Corral, Vacuna, Venta, Movimiento
+from django.core.exceptions import ValidationError
+from .models import Animal, Corral, Vacuna, Venta, Movimiento, Baja, normalizar_caravana
 from datetime import date
 
 class MovimientoInline(admin.TabularInline):
@@ -17,6 +18,29 @@ class AnimalForm(forms.ModelForm):
         widgets = {
             'vacunas_ingreso': forms.CheckboxSelectMultiple
         }
+
+    def clean_numero_caravana(self):
+        raw = self.cleaned_data.get('numero_caravana', '')
+        norm = normalizar_caravana(raw)
+        if not norm:
+            raise ValidationError("Ingresá un número de caravana válido.")
+        qs = Animal.objects.filter(numero_caravana=norm)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            existente = qs.first()
+            if existente.activo:
+                corral = existente.corral_actual.nombre_bonito if existente.corral_actual else "sin corral"
+                raise ValidationError(f"❌ La caravana {norm} YA EXISTE: está activa en {corral} con {existente.kg_actual}kg. No se puede cargar duplicada.")
+            else:
+                venta = Venta.objects.filter(animal=existente).first()
+                if venta:
+                    raise ValidationError(f"❌ La caravana {norm} ya fue VENDIDA el {venta.fecha} por ${venta.precio_kg}/kg. No se puede reutilizar.")
+                baja = Baja.objects.filter(animal=existente).first()
+                if baja:
+                    raise ValidationError(f"❌ La caravana {norm} ya fue dada de BAJA el {baja.fecha} ({baja.motivo}). No se puede reutilizar.")
+                raise ValidationError(f"❌ La caravana {norm} ya existe en el sistema (inactiva). No se puede reutilizar.")
+        return norm
 
 @admin.register(Corral)
 class CorralAdmin(admin.ModelAdmin):
@@ -35,10 +59,21 @@ class AnimalAdmin(admin.ModelAdmin):
     inlines = [MovimientoInline]
 
     def save_model(self, request, obj, form, change):
+        # El bloqueo ya está en clean_numero_caravana + model clean
         if not change:
             obj.kg_actual = obj.kg_ingreso
             obj.fecha_ingreso_corral = date.today()
-        super().save_model(request, obj, form, change)
+        try:
+            obj.full_clean()
+            super().save_model(request, obj, form, change)
+        except ValidationError as e:
+            # Mostrar el error bonito en el admin
+            from django.contrib import messages
+            for field, errs in e.message_dict.items():
+                for err in errs:
+                    self.message_user(request, err, level=messages.ERROR)
+            # No guardar
+            return
 
     def get_corral(self, nombre):
         return Corral.objects.filter(nombre=nombre).first()
@@ -73,8 +108,10 @@ class AnimalAdmin(admin.ModelAdmin):
     def mover_a_terminacion_1(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_1')
     @admin.action(description='Mover a Terminación 2')
     def mover_a_terminacion_2(self, request, queryset): self._mover_masivo(request, queryset, 'terminacion_2')
+    @admin.action(description='Mover a Venta')
+    def mover_a_venta(self, request, queryset): self._mover_masivo(request, queryset, 'venta')
 
-    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2']
+    actions = ['mover_a_recepcion', 'mover_a_recria_1', 'mover_a_recria_2', 'mover_a_terminacion_1', 'mover_a_terminacion_2', 'mover_a_venta']
 
 @admin.register(Venta)
 class VentaAdmin(admin.ModelAdmin):

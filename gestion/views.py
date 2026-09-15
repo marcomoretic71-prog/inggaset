@@ -197,34 +197,67 @@ def informe_pdf(request):
     response['Content-Disposition'] = f'attachment; filename="Informe_IngGaset_{date.today()}.pdf"'
     p = canvas.Canvas(response, pagesize=A4)
     ancho, alto = A4
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(2*cm, alto - 2*cm, "IngGaset - Informe de Rodeo")
-    p.setFont("Helvetica", 10)
-    p.drawString(2*cm, alto - 2.7*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total animales activos: {Animal.objects.filter(activo=True).count()}")
-    y = alto - 4*cm
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(1.5*cm, y, "CARAVANA")
-    p.drawString(4*cm, y, "PESO")
-    p.drawString(6*cm, y, "CORRAL")
-    p.drawString(9.5*cm, y, "FECHA MOV.")
-    p.drawString(12.5*cm, y, "DIAS")
-    p.drawString(14*cm, y, "ESTADO")
-    p.line(1.5*cm, y-0.2*cm, 19*cm, y-0.2*cm)
-    p.setFont("Helvetica", 8)
-    y -= 0.6*cm
+    
+    # TITULO
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1.5*cm, alto - 1.5*cm, "IngGaset - Informe de Rodeo")
+    p.setFont("Helvetica", 9)
+    p.drawString(1.5*cm, alto - 2.1*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total animales activos: {Animal.objects.filter(activo=True).count()}")
+    
+    # CABECERA TABLA - posiciones bien separadas
+    y = alto - 3*cm
+    p.setFont("Helvetica-Bold", 7)
+    # X posiciones: caravana larga necesita 4.5cm, luego resto
+    x_caravana = 1.5*cm
+    x_peso = 5.5*cm
+    x_corral = 7.5*cm
+    x_fecha = 10.8*cm
+    x_dias = 13.2*cm
+    x_estado = 14.7*cm
+    
+    p.drawString(x_caravana, y, "CARAVANA")
+    p.drawString(x_peso, y, "PESO")
+    p.drawString(x_corral, y, "CORRAL")
+    p.drawString(x_fecha, y, "FECHA MOV.")
+    p.drawString(x_dias, y, "DIAS")
+    p.drawString(x_estado, y, "ESTADO")
+    p.line(1.5*cm, y-0.15*cm, 19.5*cm, y-0.15*cm)
+    
+    p.setFont("Helvetica", 7)
+    y -= 0.5*cm
+    
     animales = Animal.objects.filter(activo=True).select_related('corral_actual').order_by('corral_actual__nombre', 'fecha_ingreso_corral')
+    
     for animal in animales:
-        if y < 2.5*cm:
+        if y < 2*cm:
             p.showPage()
-            y = alto - 2*cm
+            y = alto - 1.5*cm
+            # repetir cabecera
+            p.setFont("Helvetica-Bold", 7)
+            p.drawString(x_caravana, y, "CARAVANA")
+            p.drawString(x_peso, y, "PESO")
+            p.drawString(x_corral, y, "CORRAL")
+            p.drawString(x_fecha, y, "FECHA MOV.")
+            p.drawString(x_dias, y, "DIAS")
+            p.drawString(x_estado, y, "ESTADO")
+            p.line(1.5*cm, y-0.15*cm, 19.5*cm, y-0.15*cm)
+            p.setFont("Helvetica", 7)
+            y -= 0.5*cm
+            
         estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {animal.kg_faltantes}kg")
-        p.drawString(1.5*cm, y, str(animal.numero_caravana))
-        p.drawString(4*cm, y, f"{animal.kg_actual} kg")
-        p.drawString(6*cm, y, str(animal.corral_actual.nombre_bonito if animal.corral_actual else '-'))
-        p.drawString(9.5*cm, y, animal.fecha_ingreso_corral.strftime('%d/%m/%Y'))
-        p.drawString(12.5*cm, y, f"{animal.dias_en_corral}d")
-        p.drawString(14*cm, y, str(estado))
-        y -= 0.5*cm
+        corral_nombre = animal.corral_actual.nombre_bonito if animal.corral_actual else '-'
+        # acortar nombre de corral si es muy largo
+        if len(corral_nombre) > 14:
+            corral_nombre = corral_nombre[:13]
+        
+        p.drawString(x_caravana, y, str(animal.numero_caravana))
+        p.drawString(x_peso, y, f"{animal.kg_actual}kg")
+        p.drawString(x_corral, y, str(corral_nombre))
+        p.drawString(x_fecha, y, animal.fecha_ingreso_corral.strftime('%d/%m/%Y'))
+        p.drawString(x_dias, y, f"{animal.dias_en_corral}d")
+        p.drawString(x_estado, y, str(estado))
+        y -= 0.42*cm
+    
     p.showPage()
     p.save()
     return response

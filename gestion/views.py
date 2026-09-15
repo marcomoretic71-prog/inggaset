@@ -3,12 +3,19 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Avg, Sum
 from django.http import HttpResponse
 from django.contrib import messages
-from django.core.exceptions import ValidationError
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
-from .models import Corral, Animal, Pesada, Movimiento, Venta, Baja, Vacuna, normalizar_caravana
+from .models import Corral, Animal, Pesada, Movimiento, Venta, Baja, Vacuna
 import pandas as pd
+import re
+
+def normalizar_caravana(valor: str) -> str:
+    if not valor: return ""
+    v = str(valor).strip()
+    v = re.sub(r'\D', '', v)
+    v = v.lstrip('0') or '0'
+    return v
 
 def _asegurar_corrales():
     datos = [
@@ -34,7 +41,6 @@ def _asegurar_corrales():
             c.dias_objetivo = int((ps - pe) / gdpv) if gdpv else 30
         c.save()
 
-# --- NUEVO: ALTA INDIVIDUAL CON BLOQUEO ---
 def alta_animal(request):
     _asegurar_corrales()
     if request.method == 'POST':
@@ -42,13 +48,10 @@ def alta_animal(request):
         categoria = request.POST.get('categoria','ternero')
         kg_raw = request.POST.get('kg_ingreso','80')
         corral_id = request.POST.get('corral_actual')
-
         norm = normalizar_caravana(caravana_raw)
         if not norm:
             messages.error(request, f"❌ Caravana inválida: '{caravana_raw}'")
             return redirect('alta_animal')
-
-        # BLOQUEO DUPLICADO ANTES DE GUARDAR
         existente = Animal.objects.filter(numero_caravana=norm).first()
         if existente:
             if existente.activo:
@@ -57,22 +60,19 @@ def alta_animal(request):
             else:
                 venta = Venta.objects.filter(animal=existente).first()
                 if venta:
-                    messages.error(request, f"❌ BLOQUEADO: La caravana {norm} ya fue VENDIDA el {venta.fecha}. No se puede reutilizar.")
+                    messages.error(request, f"❌ BLOQUEADO: La caravana {norm} ya fue VENDIDA el {venta.fecha}.")
                 else:
                     baja = Baja.objects.filter(animal=existente).first()
                     if baja:
                         messages.error(request, f"❌ BLOQUEADO: La caravana {norm} ya fue dada de BAJA ({baja.motivo}) el {baja.fecha}.")
                     else:
-                        messages.error(request, f"❌ BLOQUEADO: La caravana {norm} ya existe (inactiva). No se puede reutilizar.")
+                        messages.error(request, f"❌ BLOQUEADO: La caravana {norm} ya existe (inactiva).")
             return redirect('alta_animal')
-
         try:
             kg = float(str(kg_raw).replace(',', '.'))
         except:
             kg = 80
-
         corral = get_object_or_404(Corral, id=corral_id) if corral_id else Corral.objects.first()
-
         try:
             animal = Animal(
                 numero_caravana=norm,
@@ -84,7 +84,6 @@ def alta_animal(request):
                 fecha_ingreso=date.today(),
                 activo=True
             )
-            animal.full_clean()
             animal.save()
             vac_ids = request.POST.getlist('vacunas')
             if vac_ids:
@@ -92,14 +91,9 @@ def alta_animal(request):
             Pesada.objects.create(animal=animal, peso=kg, fecha=date.today(), observaciones="Ingreso")
             messages.success(request, f"✅ Caravana {norm} creada correctamente en {corral.nombre_bonito} con {kg}kg")
             return redirect('dashboard')
-        except ValidationError as e:
-            err = "; ".join([f"{', '.join(v)}" for v in e.message_dict.values()])
-            messages.error(request, f"❌ {err}")
-            return redirect('alta_animal')
         except Exception as ex:
-            messages.error(request, f"❌ Error inesperado: {ex}")
+            messages.error(request, f"❌ Error: {ex}")
             return redirect('alta_animal')
-
     return render(request, 'gestion/alta_animal.html', {
         'corrales': Corral.objects.all().order_by('nombre'),
         'vacunas': Vacuna.objects.all(),
@@ -110,10 +104,8 @@ def dashboard(request):
     _asegurar_corrales()
     q = request.GET.get('q','').strip()
     base = Animal.objects.filter(activo=True)
-    # Busca normalizado también
     q_norm = normalizar_caravana(q) if q else ""
     if q:
-        # busca por caravana original o normalizada
         if q_norm and q_norm != q:
             filtrados = base.filter(numero_caravana__icontains=q) | base.filter(numero_caravana__icontains=q_norm)
         else:
@@ -134,7 +126,6 @@ def dashboard(request):
             'corral': corral, 'count': anims.count(), 'promedio': round(prom, 1),
             'alimento': round(sum(a.alimento_diario_kg for a in anims), 1), 'listos': listos,
         })
-
     saldo_caja = None
     try:
         from caja.models import MovimientoCaja
@@ -143,7 +134,6 @@ def dashboard(request):
         saldo_caja = ing - egr
     except Exception:
         saldo_caja = None
-
     return render(request, 'gestion/dashboard.html', {
         'total_animales': total_animales, 'total_alimento': total_alimento, 'total_listos': total_listos,
         'datos_corrales': datos_corrales,
@@ -261,13 +251,10 @@ def importar_excel(request):
                 caravana = normalizar_caravana(caravana_raw)
                 if not caravana or len(caravana) < 1:
                     continue
-
-                # BLOQUEO DENTRO DEL MISMO EXCEL
                 if caravana in vistos_en_excel:
                     duplicados_en_excel += 1
                     continue
                 vistos_en_excel.add(caravana)
-
                 peso_raw = str(row.get('kilo', row.get('peso', '0'))).replace(',', '.')
                 try: peso = float(peso_raw)
                 except: peso = 80
@@ -279,19 +266,15 @@ def importar_excel(request):
                 elif 'toro' in sexo: categoria = 'toro'
                 elif 'vaca' in sexo: categoria = 'vaca'
                 else: categoria = 'ternero'
-
-                # Si ya existe en BD, actualiza peso pero no crea duplicado
                 try:
                     animal_existente = Animal.objects.filter(numero_caravana=caravana).first()
                     if animal_existente:
-                        # si está activo, solo actualiza
                         if animal_existente.activo and animal_existente.kg_actual != peso:
                             animal_existente.kg_actual = peso
                             animal_existente.save()
                             Pesada.objects.create(animal=animal_existente, peso=peso, fecha=date.today())
                             actualizados += 1
                         continue
-
                     animal = Animal(
                         numero_caravana=caravana,
                         kg_actual=peso,
@@ -301,21 +284,17 @@ def importar_excel(request):
                         activo=True,
                         fecha_ingreso_corral=date.today()
                     )
-                    animal.full_clean()
                     animal.save()
                     Pesada.objects.create(animal=animal, peso=peso, fecha=date.today())
                     creados += 1
-                except ValidationError:
-                    # bloqueado por duplicado real
+                except Exception:
                     duplicados_en_excel += 1
                     continue
-
             total = Animal.objects.filter(activo=True).count()
             msg = f'¡Listo! {creados} nuevos, {actualizados} actualizados. Total activo: {total}'
             if duplicados_en_excel:
-                msg += f' | {duplicados_en_excel} duplicados bloqueados dentro del excel o ya existentes'
+                msg += f' | {duplicados_en_excel} duplicados bloqueados'
             messages.success(request, msg)
         except Exception as e:
             messages.error(request, f'Error al importar: {e}')
     return redirect('dashboard')
-

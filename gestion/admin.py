@@ -1,8 +1,15 @@
 ﻿from django import forms
 from django.contrib import admin
-from django.core.exceptions import ValidationError
-from .models import Animal, Corral, Vacuna, Venta, Movimiento, Baja, normalizar_caravana
+from .models import Animal, Corral, Vacuna, Venta, Movimiento, Baja
 from datetime import date
+import re
+
+def normalizar_caravana(valor: str) -> str:
+    if not valor: return ""
+    v = str(valor).strip()
+    v = re.sub(r'\D', '', v)
+    v = v.lstrip('0') or '0'
+    return v
 
 class MovimientoInline(admin.TabularInline):
     model = Movimiento
@@ -23,23 +30,25 @@ class AnimalForm(forms.ModelForm):
         raw = self.cleaned_data.get('numero_caravana', '')
         norm = normalizar_caravana(raw)
         if not norm:
+            from django.core.exceptions import ValidationError
             raise ValidationError("Ingresá un número de caravana válido.")
         qs = Animal.objects.filter(numero_caravana=norm)
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             existente = qs.first()
+            from django.core.exceptions import ValidationError
             if existente.activo:
                 corral = existente.corral_actual.nombre_bonito if existente.corral_actual else "sin corral"
                 raise ValidationError(f"❌ La caravana {norm} YA EXISTE: está activa en {corral} con {existente.kg_actual}kg. No se puede cargar duplicada.")
             else:
                 venta = Venta.objects.filter(animal=existente).first()
                 if venta:
-                    raise ValidationError(f"❌ La caravana {norm} ya fue VENDIDA el {venta.fecha} por ${venta.precio_kg}/kg. No se puede reutilizar.")
+                    raise ValidationError(f"❌ La caravana {norm} ya fue VENDIDA el {venta.fecha}. No se puede reutilizar.")
                 baja = Baja.objects.filter(animal=existente).first()
                 if baja:
-                    raise ValidationError(f"❌ La caravana {norm} ya fue dada de BAJA el {baja.fecha} ({baja.motivo}). No se puede reutilizar.")
-                raise ValidationError(f"❌ La caravana {norm} ya existe en el sistema (inactiva). No se puede reutilizar.")
+                    raise ValidationError(f"❌ La caravana {norm} ya fue dada de BAJA el {baja.fecha} ({baja.motivo}).")
+                raise ValidationError(f"❌ La caravana {norm} ya existe (inactiva). No se puede reutilizar.")
         return norm
 
 @admin.register(Corral)
@@ -59,21 +68,10 @@ class AnimalAdmin(admin.ModelAdmin):
     inlines = [MovimientoInline]
 
     def save_model(self, request, obj, form, change):
-        # El bloqueo ya está en clean_numero_caravana + model clean
         if not change:
             obj.kg_actual = obj.kg_ingreso
             obj.fecha_ingreso_corral = date.today()
-        try:
-            obj.full_clean()
-            super().save_model(request, obj, form, change)
-        except ValidationError as e:
-            # Mostrar el error bonito en el admin
-            from django.contrib import messages
-            for field, errs in e.message_dict.items():
-                for err in errs:
-                    self.message_user(request, err, level=messages.ERROR)
-            # No guardar
-            return
+        super().save_model(request, obj, form, change)
 
     def get_corral(self, nombre):
         return Corral.objects.filter(nombre=nombre).first()

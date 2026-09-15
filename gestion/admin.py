@@ -2,7 +2,14 @@
 from django.contrib import admin
 from .models import Animal, Corral, Vacuna, Venta, Movimiento, Baja
 from datetime import date
+
 import re
+def normalizar_caravana(valor: str) -> str:
+    if not valor: return ""
+    v = str(valor).strip()
+    v = re.sub(r'\D', '', v)
+    v = v.lstrip('0') or '0'
+    return v
 
 def normalizar_caravana(valor: str) -> str:
     if not valor: return ""

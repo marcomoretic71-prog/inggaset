@@ -1,17 +1,5 @@
 from django.db import models
-from django.core.exceptions import ValidationError
 from datetime import date
-import re
-
-# --- UTIL NORMALIZAR CARAVANA ---
-def normalizar_caravana(valor: str) -> str:
-    """Deja solo digitos, saca espacios y ceros a la izquierda. 000123 -> 123"""
-    if not valor:
-        return ""
-    v = str(valor).strip()
-    v = re.sub(r'\D', '', v)  # solo numeros
-    v = v.lstrip('0') or '0'
-    return v
 
 class Vacuna(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
@@ -51,7 +39,7 @@ class Animal(models.Model):
         ('mej', 'MEJ'),
     ]
 
-    numero_caravana = models.CharField(max_length=20, unique=True, verbose_name="N° Caravana", db_index=True)
+    numero_caravana = models.CharField(max_length=20, unique=True, verbose_name="N° Caravana")
     categoria = models.CharField(max_length=20, choices=CATEGORIAS, default='ternero')
     kg_ingreso = models.FloatField(verbose_name="Kg Ingreso", default=80)
     kg_actual = models.FloatField(verbose_name="Kg Actual", blank=True, null=True)
@@ -60,30 +48,6 @@ class Animal(models.Model):
     fecha_ingreso = models.DateField(default=date.today)
     fecha_ingreso_corral = models.DateField(default=date.today)
     activo = models.BooleanField(default=True)
-
-    def clean(self):
-        super().clean()
-        norm = normalizar_caravana(self.numero_caravana)
-        if not norm:
-            raise ValidationError({"numero_caravana": "Ingresá un número de caravana válido."})
-        self.numero_caravana = norm
-        qs = Animal.objects.filter(numero_caravana=norm)
-        if self.pk:
-            qs = qs.exclude(pk=self.pk)
-        if qs.exists():
-            existente = qs.first()
-            if existente.activo:
-                corral = existente.corral_actual.nombre_bonito if existente.corral_actual else "sin corral"
-                raise ValidationError({"numero_caravana": f"❌ La caravana {norm} YA EXISTE: está activa en {corral} con {existente.kg_actual}kg. No se puede cargar duplicada."})
-            else:
-                # ver si fue venta
-                if Venta.objects.filter(animal=existente).exists():
-                    v = Venta.objects.filter(animal=existente).first()
-                    raise ValidationError({"numero_caravana": f"❌ La caravana {norm} ya fue VENDIDA el {v.fecha} por ${v.precio_kg}/kg. No se puede reutilizar."})
-                if Baja.objects.filter(animal=existente).exists():
-                    b = Baja.objects.filter(animal=existente).first()
-                    raise ValidationError({"numero_caravana": f"❌ La caravana {norm} ya fue dada de BAJA el {b.fecha} ({b.motivo}). No se puede reutilizar."})
-                raise ValidationError({"numero_caravana": f"❌ La caravana {norm} ya existe en el sistema (inactiva). No se puede reutilizar."})
 
     @property
     def alimento_diario_kg(self):
@@ -137,11 +101,8 @@ class Animal(models.Model):
         return 0
 
     def save(self, *args, **kwargs):
-        self.numero_caravana = normalizar_caravana(self.numero_caravana)
         if not self.kg_actual:
             self.kg_actual = self.kg_ingreso
-        # validación que bloquea duplicado con mensaje bonito
-        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -149,7 +110,6 @@ class Animal(models.Model):
 
     class Meta:
         verbose_name_plural = "02 Animals"
-        ordering = ['numero_caravana']
 
 class Pesada(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name="pesada_set")
@@ -158,8 +118,8 @@ class Pesada(models.Model):
     observaciones = models.CharField(max_length=200, blank=True)
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # evita loop de full_clean
-        Animal.objects.filter(pk=self.animal.pk).update(kg_actual=self.peso)
+        self.animal.kg_actual = self.peso
+        self.animal.save()
     def __str__(self): return f"Pesada {self.animal.numero_caravana} - {self.peso}Kg"
     class Meta:
         verbose_name_plural = "Pesadas"
@@ -175,7 +135,8 @@ class Baja(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.animal.activo:
-            Animal.objects.filter(pk=self.animal.pk).update(activo=False)
+            self.animal.activo = False
+            self.animal.save()
     def __str__(self): return f"Baja {self.animal.numero_caravana} - {self.motivo}"
     class Meta:
         verbose_name_plural = "Bajas"
@@ -204,7 +165,8 @@ class Venta(models.Model):
         es_nueva = self._state.adding
         super().save(*args, **kwargs)
         if self.animal.activo:
-            Animal.objects.filter(pk=self.animal.pk).update(activo=False)
+            self.animal.activo = False
+            self.animal.save()
         if es_nueva:
             try:
                 from caja.models import MovimientoCaja

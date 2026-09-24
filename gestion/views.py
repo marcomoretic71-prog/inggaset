@@ -112,20 +112,38 @@ def dashboard(request):
             filtrados = base.filter(numero_caravana__icontains=q)
     else:
         filtrados = base
-    total_animales = base.count()
-    total_alimento = round(sum(a.alimento_diario_kg for a in base), 1) if total_animales else 0
-    datos_corrales = []
+
+    # NUEVO: agrupado por corral, mayor a menor peso dentro de cada corral
+    animales_por_corral = []
     total_listos = 0
     for corral in Corral.objects.all().order_by('nombre'):
-        anims = base.filter(corral_actual=corral)
-        prom = anims.aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
-        listos = sum(1 for a in anims if a.listo_para == 'venta' or a.listo_para == 'mover')
-        listos_venta = sum(1 for a in anims if a.listo_para == 'venta')
-        total_listos += listos_venta
-        datos_corrales.append({
-            'corral': corral, 'count': anims.count(), 'promedio': round(prom, 1),
-            'alimento': round(sum(a.alimento_diario_kg for a in anims), 1), 'listos': listos,
+        anims_qs = base.filter(corral_actual=corral).select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('-kg_actual')
+        # Si hay búsqueda, filtrar también por corral
+        if q:
+            anims_qs = anims_qs.filter(id__in=filtrados.values_list('id', flat=True))
+        if not anims_qs.exists() and q:
+            continue
+        prom = base.filter(corral_actual=corral).aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
+        if not q:
+            # promedio solo de ese corral, no del filtrado
+            prom = anims_qs.aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
+        listos = sum(1 for a in anims_qs if a.listo_para == 'venta' or a.listo_para == 'mover')
+        listos_venta = sum(1 for a in anims_qs if a.listo_para == 'venta')
+        total_listos += listos_venta if not q else 0
+        # Para el acordeon, si hay búsqueda, dejarlo expandido
+        animales_por_corral.append({
+            'corral': corral,
+            'animales': anims_qs,
+            'count': anims_qs.count(),
+            'promedio': round(prom, 1),
+            'alimento': round(sum(a.alimento_diario_kg for a in anims_qs), 1),
+            'listos': listos,
+            'expandido': True if q else False,
         })
+
+    total_animales = base.count()
+    total_alimento = round(sum(a.alimento_diario_kg for a in base), 1) if total_animales else 0
+
     saldo_caja = None
     try:
         from caja.models import MovimientoCaja
@@ -134,14 +152,20 @@ def dashboard(request):
         saldo_caja = ing - egr
     except Exception:
         saldo_caja = None
+
     return render(request, 'gestion/dashboard.html', {
-        'total_animales': total_animales, 'total_alimento': total_alimento, 'total_listos': total_listos,
-        'datos_corrales': datos_corrales,
-        'animales_filtrados': filtrados.select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('fecha_ingreso_corral', 'numero_caravana'),
+        'total_animales': total_animales,
+        'total_alimento': total_alimento,
+        'total_listos': total_listos,
+        'datos_corrales': animales_por_corral,  # ahora viene agrupado
+        'animales_por_corral': animales_por_corral,
+        'animales_filtrados': filtrados.select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('-kg_actual'),
         'todos_los_corrales': Corral.objects.all().order_by('nombre'),
         'ventas_count': Venta.objects.count(),
         'total_facturado': sum(float(v.kg_venta) * float(v.precio_kg) for v in Venta.objects.all()) if Venta.objects.exists() else 0,
-        'bajas_count': Baja.objects.count(), 'bajas_muerte': Baja.objects.filter(motivo='muerte').count(), 'q': q,
+        'bajas_count': Baja.objects.count(),
+        'bajas_muerte': Baja.objects.filter(motivo='muerte').count(),
+        'q': q,
         'saldo_caja': saldo_caja,
     })
 
@@ -173,6 +197,68 @@ def mover_rapido(request):
             animal.corral_actual = dest
             animal.fecha_ingreso_corral = date.today()
             animal.save()
+    return redirect('dashboard')
+
+def mover_masivo(request):
+    """ NUEVO: mover varias caravanas a la vez, con peso y destino individual opcional """
+    if request.method == 'POST':
+        animal_ids = request.POST.getlist('animal_ids')
+        if not animal_ids:
+            messages.error(request, "❌ No seleccionaste ninguna caravana")
+            return redirect('dashboard')
+        
+        corral_global_id = request.POST.get('corral_destino_global')
+        corral_global = None
+        if corral_global_id:
+            try:
+                corral_global = Corral.objects.get(id=corral_global_id)
+            except:
+                corral_global = None
+
+        movidos = 0
+        pesados = 0
+        for aid in animal_ids:
+            try:
+                animal = Animal.objects.get(id=aid, activo=True)
+            except Animal.DoesNotExist:
+                continue
+
+            # Peso individual si viene: peso_{id}
+            peso_key = f'peso_{aid}'
+            nuevo_peso_raw = request.POST.get(peso_key, '').strip()
+            if nuevo_peso_raw:
+                try:
+                    np = float(nuevo_peso_raw.replace(',', '.'))
+                    if np > 0 and np != animal.kg_actual:
+                        animal.kg_actual = np
+                        Pesada.objects.create(animal=animal, peso=np, fecha=date.today(), observaciones="Pesada masiva")
+                        pesados += 1
+                except:
+                    pass
+
+            # Destino individual: destino_{id} o global
+            destino_key = f'destino_{aid}'
+            dest_id = request.POST.get(destino_key) or (corral_global.id if corral_global else None)
+            if dest_id:
+                try:
+                    dest = Corral.objects.get(id=dest_id)
+                    if animal.corral_actual_id != dest.id:
+                        Movimiento.objects.create(
+                            animal=animal,
+                            corral_origen=animal.corral_actual,
+                            corral_destino=dest,
+                            peso_en_movimiento=animal.kg_actual,
+                            fecha=date.today()
+                        )
+                        animal.corral_actual = dest
+                        animal.fecha_ingreso_corral = date.today()
+                        movidos += 1
+                except Corral.DoesNotExist:
+                    pass
+
+            animal.save()
+
+        messages.success(request, f"✅ Masivo: {len(animal_ids)} seleccionadas • {pesados} pesadas • {movidos} movidas")
     return redirect('dashboard')
 
 def vender_rapido(request):
@@ -225,20 +311,16 @@ def informe_pdf(request):
 
     y = dibujar_cabecera(y)
     
-    # AGRUPADO POR CORRAL, ORDENADO MAYOR A MENOR DENTRO DE CADA CORRAL
     corrales_orden = Corral.objects.all().order_by('nombre')
     
     for corral in corrales_orden:
         animales_corral = Animal.objects.filter(activo=True, corral_actual=corral).select_related('corral_actual').order_by('-kg_actual')
         if not animales_corral.exists():
             continue
-
         if y < 3*cm:
             p.showPage()
             y = alto - 1.5*cm
             y = dibujar_cabecera(y)
-
-        # Titulo del corral con fondo gris
         p.setFont("Helvetica-Bold", 8)
         p.setFillColorRGB(0.92, 0.92, 0.92)
         p.rect(1.5*cm, y-0.1*cm, 18*cm, 0.55*cm, fill=1, stroke=0)
@@ -246,7 +328,6 @@ def informe_pdf(request):
         p.drawString(1.6*cm, y+0.05*cm, f"{corral.nombre_bonito.upper()} ({animales_corral.count()} animales) - mayor a menor peso")
         y -= 0.7*cm
         p.setFont("Helvetica", 7)
-
         for animal in animales_corral:
             if y < 2*cm:
                 p.showPage()
@@ -259,12 +340,10 @@ def informe_pdf(request):
                 p.drawString(1.6*cm, y+0.05*cm, f"{corral.nombre_bonito.upper()} (cont.) - mayor a menor")
                 y -= 0.7*cm
                 p.setFont("Helvetica", 7)
-                
             estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {animal.kg_faltantes}kg")
             corral_nombre = animal.corral_actual.nombre_bonito if animal.corral_actual else '-'
             if len(corral_nombre) > 14:
                 corral_nombre = corral_nombre[:13]
-            
             p.drawString(x_caravana, y, str(animal.numero_caravana))
             p.drawString(x_peso, y, f"{animal.kg_actual}kg")
             p.drawString(x_corral, y, str(corral_nombre))

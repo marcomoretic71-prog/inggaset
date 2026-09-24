@@ -198,16 +198,13 @@ def informe_pdf(request):
     p = canvas.Canvas(response, pagesize=A4)
     ancho, alto = A4
     
-    # TITULO
     p.setFont("Helvetica-Bold", 14)
     p.drawString(1.5*cm, alto - 1.5*cm, "IngGaset - Informe de Rodeo")
     p.setFont("Helvetica", 9)
-    p.drawString(1.5*cm, alto - 2.1*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total animales activos: {Animal.objects.filter(activo=True).count()}")
+    p.drawString(1.5*cm, alto - 2.1*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total animales activos: {Animal.objects.filter(activo=True).count()} | Orden: Mayor a menor peso")
     
-    # CABECERA TABLA - posiciones bien separadas
     y = alto - 3*cm
     p.setFont("Helvetica-Bold", 7)
-    # X posiciones: caravana larga necesita 4.5cm, luego resto
     x_caravana = 1.5*cm
     x_peso = 5.5*cm
     x_corral = 7.5*cm
@@ -226,13 +223,13 @@ def informe_pdf(request):
     p.setFont("Helvetica", 7)
     y -= 0.5*cm
     
-    animales = Animal.objects.filter(activo=True).select_related('corral_actual').order_by('corral_actual__nombre', 'fecha_ingreso_corral')
+    # CORRECCION: ordenado de mayor a menor peso
+    animales = Animal.objects.filter(activo=True).select_related('corral_actual').order_by('-kg_actual')
     
     for animal in animales:
         if y < 2*cm:
             p.showPage()
             y = alto - 1.5*cm
-            # repetir cabecera
             p.setFont("Helvetica-Bold", 7)
             p.drawString(x_caravana, y, "CARAVANA")
             p.drawString(x_peso, y, "PESO")
@@ -246,7 +243,6 @@ def informe_pdf(request):
             
         estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {animal.kg_faltantes}kg")
         corral_nombre = animal.corral_actual.nombre_bonito if animal.corral_actual else '-'
-        # acortar nombre de corral si es muy largo
         if len(corral_nombre) > 14:
             corral_nombre = corral_nombre[:13]
         

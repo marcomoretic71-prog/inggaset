@@ -14,7 +14,7 @@ body{background:#ece4d1}
 .checkbox-big{width:22px;height:22px;accent-color:#2e6a4a}
 </style>
 </head>
-<body class="p-2 md:p-4 max-w- mx-auto space-y-3 md:space-y-4 pb-28">
+<body class="p-2 md:p-4 max-w- mx-auto space-y-3 md:space-y-4 pb-32">
 
 <!-- HEADER -->
 <div class="w-full bg-[#3a6a5a] flex flex-col md:flex-row md:items-center p-3 md:px-8 md:h-20 justify-between rounded-xl shadow-md gap-3">
@@ -47,22 +47,22 @@ body{background:#ece4d1}
 
 <!-- STATS -->
 <div class="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3">
-  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl">
     <div class="text- font-black text-[#9c957f] tracking-widest">TOTAL ANIMALES</div>
     <div class="text-2xl font-bold mt-1">{{total_animales}}</div>
     <span class="mt-2 bg-[#d9e6c3] text-[#4a6b5a] text- px-3 py-1 rounded-full font-bold w-fit">Activos en corral</span>
   </div>
-  <div class="bg-[#2e6a4a] text-white p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+  <div class="bg-[#2e6a4a] text-white p-3 md:p-4 flex flex-col justify-between rounded-xl">
     <div class="text- font-bold text-[#c7dcc5] tracking-widest">ALIMENTO TOTAL / DÍA</div>
     <div class="text-2xl font-bold mt-1">{{total_alimento}} Kg</div>
     <span class="mt-2 bg-[#1e4330] text-[#c7dcc5] text- px-3 py-1 rounded-full w-fit">Calculado por %</span>
   </div>
-  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl min-h-">
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl">
     <div class="text- font-black text-[#9c957f] tracking-widest">VENTAS ACUMULADAS</div>
     <div class="text-sm md:text-lg font-bold mt-1 truncate">{{ventas_count}} ventas • ${{total_facturado|floatformat:0}}</div>
     <span class="mt-2 bg-[#d9e6c3] text-[#4a6b5a] text- px-3 py-1 rounded-full font-bold w-fit">{{total_listos}} LISTOS</span>
   </div>
-  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl border-l-4 border-l-[#e85d6a] min-h-">
+  <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 flex flex-col justify-between rounded-xl border-l-4 border-l-[#e85d6a]">
     <div class="text- font-black text-[#9c957f] tracking-widest">BAJAS ACUMULADAS</div>
     <div class="text-sm md:text-lg font-bold mt-1">{{bajas_count}} bajas • {{bajas_muerte}} muertes</div>
     <span class="mt-2 bg-[#fde2e2] text-[#b94a3a] text- px-3 py-1 rounded-full font-black w-fit">BAJAS</span>
@@ -75,13 +75,11 @@ body{background:#ece4d1}
   {% if q %}<a href="{% url 'dashboard' %}" class="h-10 md:h-9 px-4 bg-[#e6dcc0] text-[#3a6a5a] font-black text-xs rounded-full flex items-center">Limpiar</a>{% endif %}
 </form>
 
-<!-- NUEVO: ACORDEON POR CORRAL -->
 <div class="space-y-3">
 <div class="text- font-black text-[#9c957f] tracking-widest px-1">CORRALES • TOCA PARA DESPLEGAR • MAYOR A MENOR PESO</div>
 
 {% for grupo in animales_por_corral %}
 <div class="bg-[#fffaf0] border border-[#e6dcc0] rounded-xl overflow-hidden shadow-sm {% if grupo.listos %}border-l-4 border-l-[#e11d48]{% endif %}">
-  <!-- CABECERA DEL CORRAL -->
   <div class="p-3 md:p-4 flex justify-between items-center cursor-pointer hover:bg-[#fdf8e8] transition" onclick="toggleCorral('corral-{{grupo.corral.id}}')">
     <div class="flex items-center gap-3 flex-1">
       <div class="w-8 h-8 bg-[#3a6a5a] text-white rounded-full flex items-center justify-center font-black text-sm shrink-0">›</div>
@@ -94,66 +92,88 @@ body{background:#ece4d1}
         <div class="text- text-[#9c957f] mt-1">{{ grupo.corral.peso_entrada|floatformat:0 }}→{{ grupo.corral.peso_salida|floatformat:0 }}kg • GDPV {{ grupo.corral.gdpv_esperado }} • Prom {{ grupo.promedio }}kg • {{ grupo.alimento }}kg/día</div>
       </div>
     </div>
-    <div class="flex items-center gap-2 shrink-0">
-      <span class="text-xs text-[#9c957f] hidden md:block">Mayor a menor</span>
-      <span id="icon-corral-{{grupo.corral.id}}" class="text-[#9c957f] font-black">▼</span>
-    </div>
+    <span id="icon-corral-{{grupo.corral.id}}" class="text-[#9c957f] font-black ml-2">{% if grupo.expandido %}▲{% else %}▼{% endif %}</span>
   </div>
 
-  <!-- CONTENIDO DESPLEGABLE -->
   <div id="corral-{{grupo.corral.id}}" class="{% if not grupo.expandido %}hidden{% endif %} border-t border-[#e6dcc0] bg-[#fdfaf0]">
-    <!-- Barra de selección del corral -->
     <div class="p-2 bg-[#f3f1c7] flex items-center justify-between gap-2 border-b border-[#e6dcc0]">
       <label class="flex items-center gap-2 text-xs font-black text-[#3a6a5a] cursor-pointer">
         <input type="checkbox" class="checkbox-big select-all-corral" data-corral="{{grupo.corral.id}}" onchange="toggleSelectAllCorral('{{grupo.corral.id}}', this.checked)">
         Seleccionar todo {{grupo.corral.nombre_bonito}} ({{grupo.count}})
       </label>
-      <span class="text- text-[#9c957f] font-bold">Orden: mayor a menor peso</span>
+      <span class="text- text-[#9c957f] font-bold">Mayor a menor peso</span>
     </div>
 
-    <div class="p-2 space-y-2 max-h-[80vh] overflow-y-auto">
+    <div class="p-2 space-y-3 max-h-[85vh] overflow-y-auto">
     {% for a in grupo.animales %}
-    <div class="bg-white border border-[#e6dcc0] p-2 md:p-3 rounded-xl {% if a.listo_para == 'venta' %}border-2 border-[#e11d48] shadow-md{% endif %} flex gap-2">
-      <!-- CHECKBOX GRANDE -->
-      <div class="pt-1">
-        <input type="checkbox" class="checkbox-big animal-check" data-corral="{{grupo.corral.id}}" value="{{a.id}}" data-caravana="{{a.numero_caravana}}" data-peso="{{a.kg_actual}}" data-corral-nombre="{{a.corral_actual.nombre_bonito}}" onchange="updateBulkBar()">
-      </div>
-
-      <div class="flex-1 min-w-0">
-        <div class="flex justify-between items-start gap-2">
-          <div class="flex items-start gap-2 flex-1 min-w-0">
-            <span class="w-8 h-8 bg-[#2e6a4a] text-white flex items-center justify-center text- font-black rounded-full shrink-0 mt-0.5">{{a.numero_caravana|slice:":4"}}</span>
-            <div class="min-w-0">
-              <div class="font-black text-[#2d4a3a] text-sm truncate">Caravana {{a.numero_caravana}} • {{a.kg_actual}}kg</div>
-              <div class="flex gap-1 mt-1 flex-wrap">
-                <div class="bg-[#d9e6c3] text-[#2d4a3a] text- px-2 py-0.5 rounded-full font-bold">{{a.corral_actual.nombre_bonito}} • {{a.dias_en_corral}}d</div>
-                {% if a.categoria == 'hembra' %}<span class="bg-[#f9a8d4] text-[#831843] px-2 py-0.5 rounded-full text- font-black border">HEMBRA</span>
-                {% elif a.categoria == 'novillo' %}<span class="bg-[#a7f3d0] text-[#065f46] px-2 py-0.5 rounded-full text- font-black border">NOVILLO</span>
-                {% elif a.categoria == 'ternero' %}<span class="bg-[#a7f3d0] text-[#065f46] px-2 py-0.5 rounded-full text- font-black border">TERNERO</span>
-                {% elif a.categoria == 'vaca' %}<span class="bg-[#ec4899] text-white px-2 py-0.5 rounded-full text- font-black">VACA</span>
-                {% else %}<span class="bg-[#fef08a] text-[#854d0e] px-2 py-0.5 rounded-full text- font-black border">{{ a.get_categoria_display|upper }}</span>{% endif %}
+    <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 rounded-xl {% if a.listo_para == 'venta' %}border-2 border-[#e11d48] shadow-lg{% endif %}">
+      <div class="flex gap-2">
+        <div class="pt-1">
+          <input type="checkbox" class="checkbox-big animal-check" data-corral="{{grupo.corral.id}}" value="{{a.id}}" data-caravana="{{a.numero_caravana}}" data-peso="{{a.kg_actual}}" data-corral-nombre="{{a.corral_actual.nombre_bonito}}" onchange="updateBulkBar()">
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-start gap-2">
+            <div class="flex items-start gap-2 flex-1 min-w-0">
+              <span class="w-8 h-8 bg-[#2e6a4a] text-white flex items-center justify-center text- font-black rounded-full shrink-0 mt-0.5">{{a.numero_caravana|slice:":4"}}</span>
+              <div class="min-w-0">
+                <div class="font-black text-[#2d4a3a] text-sm truncate">Caravana {{a.numero_caravana}} • {{a.kg_actual}}kg</div>
+                <div class="flex gap-1 mt-1.5 flex-wrap">
+                  <div class="bg-[#d9e6c3] text-[#2d4a3a] text- px-2 py-0.5 rounded-full font-bold">{{a.corral_actual.nombre_bonito}}</div>
+                  <div class="bg-[#e8f5e9] text-[#2e6a4a] text- px-2 py-0.5 rounded-full font-black border border-[#c8e6c9]">📅 {{a.fecha_ingreso_corral|date:"d/m/Y"}} • {{a.dias_en_corral}}d en corral</div>
+                  {% if a.categoria == 'hembra' %}<span class="bg-[#f9a8d4] text-[#831843] px-2.5 py-0.5 rounded-full text- font-black border border-[#fbcfe8]">HEMBRA</span>
+                  {% elif a.categoria == 'vaquillona' %}<span class="bg-[#f9a8d4] text-[#831843] px-2.5 py-0.5 rounded-full text- font-black border border-[#fbcfe8]">VAQUILLONA</span>
+                  {% elif a.categoria == 'vaca' %}<span class="bg-[#ec4899] text-white px-2.5 py-0.5 rounded-full text- font-black">VACA</span>
+                  {% elif a.categoria == 'ternera' %}<span class="bg-[#fbcfe8] text-[#831843] px-2.5 py-0.5 rounded-full text- font-black">TERNERA</span>
+                  {% elif a.categoria == 'castrado' %}<span class="bg-[#bfdbfe] text-[#1e3a8a] px-2.5 py-0.5 rounded-full text- font-black border border-[#dbeafe]">CASTRADO</span>
+                  {% elif a.categoria == 'novillo' %}<span class="bg-[#a7f3d0] text-[#065f46] px-2.5 py-0.5 rounded-full text- font-black border border-[#6ee7b7]">NOVILLO</span>
+                  {% elif a.categoria == 'ternero' %}<span class="bg-[#a7f3d0] text-[#065f46] px-2.5 py-0.5 rounded-full text- font-black border border-[#6ee7b7]">TERNERO</span>
+                  {% elif a.categoria == 'toro' %}<span class="bg-[#1e293b] text-white px-2.5 py-0.5 rounded-full text- font-black">TORO</span>
+                  {% elif a.categoria == 'mej' %}<span class="bg-[#f97316] text-white px-2.5 py-0.5 rounded-full text- font-black">MEJ</span>
+                  {% elif a.categoria == 'macho_entero' %}<span class="bg-[#f97316] text-white px-2.5 py-0.5 rounded-full text- font-black">MACHO ENTERO</span>
+                  {% else %}<span class="bg-[#fef08a] text-[#854d0e] px-2.5 py-0.5 rounded-full text- font-black border border-[#fde68a]">{{ a.get_categoria_display|upper }}</span>{% endif %}
+                </div>
               </div>
             </div>
+            <div class="shrink-0">
+              {% if a.listo_para == 'venta' %}<span class="bg-[#e11d48] text-white text- px-3 py-1.5 rounded-full font-black animate-pulse block">🔥 VENTA</span>
+              {% elif a.listo_para == 'mover' %}<span class="bg-[#e85d6a] text-white text- px-3 py-1 rounded-full font-black block">MOVER</span>
+              {% else %}<span class="bg-[#f0e9d2] text-[#9c957f] text- px-3 py-1 rounded-full font-bold block text-center">Faltan {{a.kg_faltantes}}kg<br>{% if a.dias_restantes_estimados %}{{a.dias_restantes_estimados}}d{% endif %}</span>{% endif %}
+            </div>
           </div>
-          <div class="shrink-0">
-            {% if a.listo_para == 'venta' %}<span class="bg-[#e11d48] text-white text- px-2 py-1 rounded-full font-black animate-pulse block">🔥 VENTA</span>
-            {% elif a.listo_para == 'mover' %}<span class="bg-[#e85d6a] text-white text- px-2 py-1 rounded-full font-black block">MOVER</span>
-            {% else %}<span class="bg-[#f0e9d2] text-[#9c957f] text- px-2 py-1 rounded-full font-bold block text-center text-">Faltan {{a.kg_faltantes}}kg</span>{% endif %}
-          </div>
-        </div>
 
-        <div class="grid grid-cols-3 gap-1 mt-2">
-          <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-1.5 text-center rounded-lg"><div class="text- font-black text-[#9c957f]">PESO</div><div class="text-xs font-bold text-[#6b8a7a]">{{a.kg_actual}} kg</div></div>
-          <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-1.5 text-center rounded-lg"><div class="text- font-black text-[#9c957f]">EN CORRAL</div><div class="text-xs font-black {% if a.dias_en_corral > 30 %}text-[#e11d48]{% else %}text-[#2e6a4a]{% endif %}">{{a.dias_en_corral}}d</div></div>
-          <div class="bg-[#2e6a4a] text-white p-1.5 text-center rounded-lg"><div class="text- font-bold">RACIÓN</div><div class="text-xs font-black">{{a.alimento_diario_kg|floatformat:1}} kg</div></div>
-        </div>
+          <!-- VACUNAS - RESTAURADO -->
+          <div class="mt-3 flex gap-1 flex-wrap">{% for v in a.vacunas_ingreso.all %}<span class="text- bg-[#c7e9f5] text-[#1e4a5a] border border-[#a8d6e8] px-2.5 py-1 rounded-full font-black">✓ {{v.nombre}}</span>{% empty %}<span class="text- text-[#9c957f] border border-dashed px-2 py-1 rounded-full">SIN VACUNAS</span>{% endfor %}</div>
 
-        <!-- Acciones individuales (se mantienen) -->
-        <div class="mt-2 space-y-1">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
-            <form method="POST" action="{% url 'pesar_rapido' %}" class="flex gap-1 bg-white p-1 rounded-full border border-[#e6dcc0] items-center">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><input name="peso" placeholder="kg" required class="flex-1 min-w-0 h-7 rounded-full border border-[#e6dcc0] px-2 text-xs bg-white font-bold outline-none"><input name="fecha" type="date" value="{% now 'Y-m-d' %}" class="w-24 h-7 rounded-full border border-[#e6dcc0] px-1 text- bg-[#fbf6e1] font-bold"><button class="h-7 px-3 rounded-full bg-[#2e6a4a] text-white font-black text- shrink-0">Pesar</button></form>
-            <form method="POST" action="{% url 'mover_rapido' %}" class="flex gap-1 bg-[#f0e9d2] p-1 rounded-full border border-[#e6dcc0]">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><select name="corral_destino" class="flex-1 min-w-0 h-7 rounded-full px-2 text-xs bg-white font-bold outline-none">{% for c in todos_los_corrales %}{% if c.nombre != 'venta' %}<option value="{{c.id}}" {% if c.id == a.corral_actual.id %}selected{% endif %}>{{c.nombre_bonito}}</option>{% endif %}{% endfor %}</select><button class="h-7 px-3 rounded-full bg-[#e8d9a0] font-black text-xs shrink-0">Mover</button></form>
+          <div class="grid grid-cols-3 gap-2 mt-3">
+            <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-2 text-center rounded-xl"><div class="text- font-black text-[#9c957f]">PESO</div><div class="text-sm font-bold text-[#6b8a7a]">{{a.kg_actual}} kg</div><div class="text- text-[#9c957f]">Obj {{a.corral_actual.peso_salida|floatformat:0}}kg</div></div>
+            <div class="bg-[#fbf6e1] border border-[#e6dcc0] p-2 text-center rounded-xl"><div class="text- font-black text-[#9c957f]">EN CORRAL</div><div class="text-sm font-black {% if a.dias_en_corral > 30 %}text-[#e11d48]{% elif a.dias_en_corral > 15 %}text-[#e67e22]{% else %}text-[#2e6a4a]{% endif %}">{{a.dias_en_corral}} días</div><div class="text- text-[#9c957f] font-bold">desde {{a.fecha_ingreso_corral|date:"d/m/Y"}}</div></div>
+            <div class="bg-[#2e6a4a] text-white p-2 text-center rounded-xl"><div class="text- font-bold">RACIÓN</div><div class="text-sm font-black">{{a.alimento_diario_kg|floatformat:1}} kg</div><div class="text- text-[#c7dcc5]">{{a.corral_actual.porcentaje_alimento}}% PV</div></div>
           </div>
+
+          {% if a.movimientos.all %}
+          <div class="mt-3 bg-white border border-[#e6dcc0] rounded-xl p-2">
+            <div class="text- font-black text-[#9c957f] tracking-widest mb-1">📍 HISTORIAL DE MOVIMIENTOS</div>
+            <div class="flex gap-1 flex-wrap">
+              {% for mov in a.movimientos.all|slice:":5" %}
+                <span class="text- bg-[#f0e9d2] border border-[#e6dcc0] px-2 py-1 rounded-full font-bold">
+                  {{mov.fecha|date:"d/m/Y"}}: {% if mov.corral_origen %}{{mov.corral_origen.nombre_bonito}}{% else %}Ingreso{% endif %} → {{mov.corral_destino.nombre_bonito}} ({{mov.peso_en_movimiento|floatformat:0}}kg)
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="mt-3 space-y-2">
+            <form method="POST" action="{% url 'pesar_rapido' %}" class="flex gap-1 bg-white p-1.5 rounded-full border border-[#e6dcc0] items-center">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><input name="peso" placeholder="Peso kg" required class="flex-1 min-w-0 h-8 rounded-full border border-[#e6dcc0] px-3 text-xs bg-white font-bold outline-none"><input name="fecha" type="date" value="{% now 'Y-m-d' %}" class="w- md:w-32 h-8 rounded-full border border-[#e6dcc0] px-2 text- bg-[#fbf6e1] font-bold"><button class="h-8 px-4 rounded-full bg-[#2e6a4a] text-white font-black text-xs shrink-0">Pesar</button></form>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <form method="POST" action="{% url 'mover_rapido' %}" class="flex gap-1 bg-[#f0e9d2] p-1.5 rounded-full border border-[#e6dcc0]">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><select name="corral_destino" class="flex-1 min-w-0 h-8 rounded-full px-2 text-xs bg-white font-bold outline-none">{% for c in todos_los_corrales %}{% if c.nombre != 'venta' %}<option value="{{c.id}}" {% if c.id == a.corral_actual.id %}selected{% endif %}>{{c.nombre_bonito}}</option>{% endif %}{% endfor %}</select><button class="h-8 px-3 rounded-full bg-[#e8d9a0] font-black text-xs shrink-0">Mover</button></form>
+              <form method="POST" action="{% url 'baja_rapida' %}" class="flex gap-1 bg-[#fbe7e1] p-1.5 rounded-full border border-[#e6c0b8] items-center">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><select name="motivo" class="flex-1 h-8 rounded-full px-2 text-xs bg-white font-bold outline-none"><option value="muerte">Muerte</option><option value="descarte">Descarte</option><option value="enfermedad">Enfermedad</option><option value="otro">Otro</option></select><button class="h-8 px-4 rounded-full bg-[#b94a3a] text-white font-black text-xs shrink-0">Baja</button></form>
+            </div>
+            <form method="POST" action="{% url 'vender_rapido' %}" class="flex gap-1 p-1.5 rounded-full border items-center {% if a.listo_para == 'venta' %}bg-[#ffe4e6] border-[#e11d48] shadow-md{% else %}bg-[#dbeafe] border-[#93c5fd]{% endif %}">{% csrf_token %}<input type="hidden" name="animal_id" value="{{a.id}}"><input name="kg_venta" type="number" step="0.1" value="{{a.kg_actual}}" class="w-20 h-8 rounded-full px-2 text-xs bg-white border border-[#e6dcc0] text-center font-bold shrink-0 outline-none"><input name="precio_kg" type="number" step="0.01" placeholder="$ / kg" required class="flex-1 min-w-0 h-8 rounded-full px-3 text-xs bg-white border border-[#e6dcc0] outline-none"><button class="h-8 px-5 rounded-full text-white font-black text-xs shrink-0 {% if a.listo_para == 'venta' %}bg-[#e11d48] animate-pulse shadow-lg{% else %}bg-[#2563eb]{% endif %}">Vender</button></form>
+          </div>
+
+          <button onclick="document.getElementById('graf-{{a.id}}').classList.toggle('hidden')" class="mt-3 w-full h-9 rounded-full bg-white border border-[#e6dcc0] font-black text-xs text-[#425d4d]">📈 Ver evolución de peso</button>
+          <div id="graf-{{a.id}}" class="hidden mt-2 bg-white border border-[#e6dcc0] rounded-xl p-3"><canvas id="chart-{{a.id}}" height="100"></canvas></div>
         </div>
       </div>
     </div>
@@ -166,7 +186,6 @@ body{background:#ece4d1}
 {% endfor %}
 </div>
 
-<!-- BARRA FLOTANTE MASIVA -->
 <div id="bulk-bar" class="fixed bottom-3 left-3 right-3 md:left-1/2 md:-translate-x-1/2 md:w-[700px] bg-[#1e293b] text-white p-3 rounded-2xl shadow-2xl hidden z-50 flex items-center justify-between gap-3">
   <div class="font-black text-sm"><span id="bulk-count">0</span> seleccionadas</div>
   <div class="flex gap-2">
@@ -175,14 +194,12 @@ body{background:#ece4d1}
   </div>
 </div>
 
-<!-- MODAL MASIVO -->
 <div id="masivo-modal" class="fixed inset-0 bg-black/60 hidden z-[60] flex items-center justify-center p-2">
   <div class="bg-[#fffaf0] w-full max-w-4xl rounded-2xl shadow-2xl max-h-[95vh] flex flex-col">
     <div class="p-4 border-b border-[#e6dcc0] flex justify-between items-center bg-[#3a6a5a] text-white rounded-t-2xl">
       <div class="font-black text-sm md:text-base">🚀 Movimiento Masivo • Destino y Peso Individual</div>
       <button onclick="closeMasivoModal()" class="w-8 h-8 bg-[#2e5443] rounded-full font-black">✕</button>
     </div>
-    
     <form method="POST" action="{% url 'mover_masivo' %}" id="form-masivo" class="flex-1 overflow-hidden flex flex-col">
       {% csrf_token %}
       <div class="p-3 bg-[#f3f1c7] border-b border-[#e6dcc0] flex flex-col md:flex-row gap-2 items-center">
@@ -193,16 +210,12 @@ body{background:#ece4d1}
         </select>
         <button type="button" onclick="aplicarGlobalATodos()" class="h-9 px-4 bg-[#2e6a4a] text-white rounded-full text-xs font-black shrink-0">Aplicar a todas</button>
       </div>
-
       <div class="flex-1 overflow-y-auto p-2">
         <div class="text- font-black text-[#9c957f] tracking-widest mb-2 px-1">Seleccionadas • Podés separar destinos y poner peso nuevo a cada una</div>
-        <div id="masivo-lista" class="space-y-2">
-          <!-- Se llena por JS -->
-        </div>
+        <div id="masivo-lista" class="space-y-2"></div>
       </div>
-
       <div class="p-3 border-t border-[#e6dcc0] bg-white flex justify-between items-center rounded-b-2xl gap-2">
-        <div class="text-xs text-[#9c957f] font-bold"><span id="masivo-total">0</span> caravanas • Peso nuevo es opcional • Si no ponés destino, no se mueve de corral</div>
+        <div class="text-xs text-[#9c957f] font-bold"><span id="masivo-total">0</span> caravanas • Peso opcional • Si no ponés destino, no se mueve</div>
         <button type="submit" class="px-6 py-2.5 bg-[#e11d48] text-white rounded-full font-black text-sm shadow-lg">✅ CONFIRMAR MASIVO</button>
       </div>
     </form>
@@ -217,14 +230,10 @@ function toggleCorral(id){
   el.classList.toggle('hidden');
   if(icon) icon.textContent = el.classList.contains('hidden') ? '▼' : '▲';
 }
-
 function toggleSelectAllCorral(corralId, checked){
-  document.querySelectorAll('.animal-check[data-corral="'+corralId+'"]').forEach(cb=>{
-    cb.checked = checked;
-  });
+  document.querySelectorAll('.animal-check[data-corral="'+corralId+'"]').forEach(cb=>{cb.checked = checked;});
   updateBulkBar();
 }
-
 function updateBulkBar(){
   const checks = document.querySelectorAll('.animal-check:checked');
   const bar = document.getElementById('bulk-bar');
@@ -233,13 +242,11 @@ function updateBulkBar(){
   if(checks.length>0) bar.classList.remove('hidden');
   else bar.classList.add('hidden');
 }
-
 function clearSelection(){
   document.querySelectorAll('.animal-check').forEach(cb=>cb.checked=false);
   document.querySelectorAll('.select-all-corral').forEach(cb=>cb.checked=false);
   updateBulkBar();
 }
-
 function openMasivoModal(){
   const checks = document.querySelectorAll('.animal-check:checked');
   if(checks.length===0) return;
@@ -270,25 +277,17 @@ function openMasivoModal(){
   document.getElementById('masivo-total').textContent = checks.length;
   document.getElementById('masivo-modal').classList.remove('hidden');
 }
-
-function closeMasivoModal(){
-  document.getElementById('masivo-modal').classList.add('hidden');
-}
-
+function closeMasivoModal(){document.getElementById('masivo-modal').classList.add('hidden');}
 function aplicarGlobalATodos(){
   const globalVal = document.getElementById('corral-global').value;
   if(!globalVal) return;
-  document.querySelectorAll('.destino-individual').forEach(sel=>{
-    sel.value = globalVal;
-  });
+  document.querySelectorAll('.destino-individual').forEach(sel=>{sel.value = globalVal;});
 }
+</script>
 
-// Auto expandir si hay búsqueda
-{% if q %}
-document.addEventListener('DOMContentLoaded', ()=>{
-  document.querySelectorAll('[id^="corral-"]').forEach(el=>el.classList.remove('hidden'));
-});
-{% endif %}
+<script>
+{% for grupo in animales_por_corral %}{% for a in grupo.animales %}
+const el{{a.id}} = document.getElementById('chart-{{a.id}}'); if(el{{a.id}}){ new Chart(el{{a.id}}, {type:'line', data:{labels:[{% for p in a.pesada_set.all %}'{{p.fecha|date:"d/m"}}',{% endfor %}'Hoy'], datasets:[{label:'kg', data:[{% for p in a.pesada_set.all %}{{p.peso}},{% endfor %}{{a.kg_actual}}], borderColor:'{% if a.listo_para == "venta" %}#e11d48{% else %}#2e6a4a{% endif %}', backgroundColor:'{% if a.listo_para == "venta" %}#ffe4e6{% else %}#d9e6c3{% endif %}', tension:0.35, fill:true}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}}}});} 
+{% endfor %}{% endfor %}
 </script>
 </body>
-</html>

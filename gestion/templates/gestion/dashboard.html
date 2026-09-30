@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IngGaset</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IngGaset">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -290,4 +296,10 @@ function aplicarGlobalATodos(){
 const el{{a.id}} = document.getElementById('chart-{{a.id}}'); if(el{{a.id}}){ new Chart(el{{a.id}}, {type:'line', data:{labels:[{% for p in a.pesada_set.all %}'{{p.fecha|date:"d/m"}}',{% endfor %}'Hoy'], datasets:[{label:'kg', data:[{% for p in a.pesada_set.all %}{{p.peso}},{% endfor %}{{a.kg_actual}}], borderColor:'{% if a.listo_para == "venta" %}#e11d48{% else %}#2e6a4a{% endif %}', backgroundColor:'{% if a.listo_para == "venta" %}#ffe4e6{% else %}#d9e6c3{% endif %}', tension:0.35, fill:true}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}}}});} 
 {% endfor %}{% endfor %}
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/service-worker.js', {scope: '/'});
+}
+</script>
 </body>
+</html>

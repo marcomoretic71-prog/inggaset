@@ -110,7 +110,7 @@ body{background:#ece4d1}
       <span class="text- text-[#9c957f] font-bold">Mayor a menor peso</span>
     </div>
 
-    <div class="p-2 space-y-3 max-h-[85vh] overflow-y-auto">
+    <div class="p-2 space-y-3 max-h- overflow-y-auto">
     {% for a in grupo.animales %}
     <div class="bg-[#fffaf0] border border-[#e6dcc0] p-3 md:p-4 rounded-xl {% if a.listo_para == 'venta' %}border-2 border-[#e11d48] shadow-lg{% endif %}">
       <div class="flex gap-2">
@@ -147,7 +147,7 @@ body{background:#ece4d1}
             </div>
           </div>
 
-          <!-- VACUNAS - RESTAURADO -->
+          <!-- VACUNAS -->
           <div class="mt-3 flex gap-1 flex-wrap">{% for v in a.vacunas_ingreso.all %}<span class="text- bg-[#c7e9f5] text-[#1e4a5a] border border-[#a8d6e8] px-2.5 py-1 rounded-full font-black">✓ {{v.nombre}}</span>{% empty %}<span class="text- text-[#9c957f] border border-dashed px-2 py-1 rounded-full">SIN VACUNAS</span>{% endfor %}</div>
 
           <div class="grid grid-cols-3 gap-2 mt-3">
@@ -163,6 +163,19 @@ body{background:#ece4d1}
               {% for mov in a.movimientos.all|slice:":5" %}
                 <span class="text- bg-[#f0e9d2] border border-[#e6dcc0] px-2 py-1 rounded-full font-bold">
                   {{mov.fecha|date:"d/m/Y"}}: {% if mov.corral_origen %}{{mov.corral_origen.nombre_bonito}}{% else %}Ingreso{% endif %} → {{mov.corral_destino.nombre_bonito}} ({{mov.peso_en_movimiento|floatformat:0}}kg)
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if a.pesada_set.all %}
+          <div class="mt-3 bg-white border border-[#e6dcc0] rounded-xl p-2">
+            <div class="text- font-black text-[#9c957f] tracking-widest mb-1">⚖️ HISTORIAL DE PESAJES</div>
+            <div class="flex gap-1 flex-wrap max-h-24 overflow-y-auto scroll-hide">
+              {% for pes in a.pesada_set.all|slice:":8" %}
+                <span class="text- bg-[#dbeafe] border border-[#bfdbfe] px-2 py-1 rounded-full font-bold text-[#1e3a8a]">
+                  {{pes.fecha|date:"d/m/Y"}}: {{pes.peso}}kg {% if pes.observaciones %}• {{pes.observaciones}}{% endif %}
                 </span>
               {% endfor %}
             </div>
@@ -192,7 +205,7 @@ body{background:#ece4d1}
 {% endfor %}
 </div>
 
-<div id="bulk-bar" class="fixed bottom-3 left-3 right-3 md:left-1/2 md:-translate-x-1/2 md:w-[700px] bg-[#1e293b] text-white p-3 rounded-2xl shadow-2xl hidden z-50 flex items-center justify-between gap-3">
+<div id="bulk-bar" class="fixed bottom-3 left-3 right-3 md:left-1/2 md:-translate-x-1/2 md:w- bg-[#1e293b] text-white p-3 rounded-2xl shadow-2xl hidden z-50 flex items-center justify-between gap-3">
   <div class="font-black text-sm"><span id="bulk-count">0</span> seleccionadas</div>
   <div class="flex gap-2">
     <button onclick="clearSelection()" class="px-4 py-2 bg-[#334155] rounded-full text-xs font-bold">Limpiar</button>
@@ -201,7 +214,7 @@ body{background:#ece4d1}
 </div>
 
 <div id="masivo-modal" class="fixed inset-0 bg-black/60 hidden z-[60] flex items-center justify-center p-2">
-  <div class="bg-[#fffaf0] w-full max-w-4xl rounded-2xl shadow-2xl max-h-[95vh] flex flex-col">
+  <div class="bg-[#fffaf0] w-full max-w-4xl rounded-2xl shadow-2xl max-h- flex flex-col">
     <div class="p-4 border-b border-[#e6dcc0] flex justify-between items-center bg-[#3a6a5a] text-white rounded-t-2xl">
       <div class="font-black text-sm md:text-base">🚀 Movimiento Masivo • Destino y Peso Individual</div>
       <button onclick="closeMasivoModal()" class="w-8 h-8 bg-[#2e5443] rounded-full font-black">✕</button>

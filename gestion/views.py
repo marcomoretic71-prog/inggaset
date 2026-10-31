@@ -113,24 +113,20 @@ def dashboard(request):
     else:
         filtrados = base
 
-    # NUEVO: agrupado por corral, mayor a menor peso dentro de cada corral
     animales_por_corral = []
     total_listos = 0
     for corral in Corral.objects.all().order_by('nombre'):
         anims_qs = base.filter(corral_actual=corral).select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('-kg_actual')
-        # Si hay búsqueda, filtrar también por corral
         if q:
             anims_qs = anims_qs.filter(id__in=filtrados.values_list('id', flat=True))
         if not anims_qs.exists() and q:
             continue
         prom = base.filter(corral_actual=corral).aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
         if not q:
-            # promedio solo de ese corral, no del filtrado
             prom = anims_qs.aggregate(Avg('kg_actual'))['kg_actual__avg'] or 0
         listos = sum(1 for a in anims_qs if a.listo_para == 'venta' or a.listo_para == 'mover')
         listos_venta = sum(1 for a in anims_qs if a.listo_para == 'venta')
         total_listos += listos_venta if not q else 0
-        # Para el acordeon, si hay búsqueda, dejarlo expandido
         animales_por_corral.append({
             'corral': corral,
             'animales': anims_qs,
@@ -157,7 +153,7 @@ def dashboard(request):
         'total_animales': total_animales,
         'total_alimento': total_alimento,
         'total_listos': total_listos,
-        'datos_corrales': animales_por_corral,  # ahora viene agrupado
+        'datos_corrales': animales_por_corral,
         'animales_por_corral': animales_por_corral,
         'animales_filtrados': filtrados.select_related('corral_actual').prefetch_related('vacunas_ingreso','pesada_set','movimientos').order_by('-kg_actual'),
         'todos_los_corrales': Corral.objects.all().order_by('nombre'),
@@ -200,13 +196,11 @@ def mover_rapido(request):
     return redirect('dashboard')
 
 def mover_masivo(request):
-    """ NUEVO: mover varias caravanas a la vez, con peso y destino individual opcional """
     if request.method == 'POST':
         animal_ids = request.POST.getlist('animal_ids')
         if not animal_ids:
             messages.error(request, "❌ No seleccionaste ninguna caravana")
             return redirect('dashboard')
-        
         corral_global_id = request.POST.get('corral_destino_global')
         corral_global = None
         if corral_global_id:
@@ -214,7 +208,6 @@ def mover_masivo(request):
                 corral_global = Corral.objects.get(id=corral_global_id)
             except:
                 corral_global = None
-
         movidos = 0
         pesados = 0
         for aid in animal_ids:
@@ -222,8 +215,6 @@ def mover_masivo(request):
                 animal = Animal.objects.get(id=aid, activo=True)
             except Animal.DoesNotExist:
                 continue
-
-            # Peso individual si viene: peso_{id}
             peso_key = f'peso_{aid}'
             nuevo_peso_raw = request.POST.get(peso_key, '').strip()
             if nuevo_peso_raw:
@@ -235,8 +226,6 @@ def mover_masivo(request):
                         pesados += 1
                 except:
                     pass
-
-            # Destino individual: destino_{id} o global
             destino_key = f'destino_{aid}'
             dest_id = request.POST.get(destino_key) or (corral_global.id if corral_global else None)
             if dest_id:
@@ -255,9 +244,7 @@ def mover_masivo(request):
                         movidos += 1
                 except Corral.DoesNotExist:
                     pass
-
             animal.save()
-
         messages.success(request, f"✅ Masivo: {len(animal_ids)} seleccionadas • {pesados} pesadas • {movidos} movidas")
     return redirect('dashboard')
 
@@ -283,24 +270,24 @@ def informe_pdf(request):
     response['Content-Disposition'] = f'attachment; filename="Informe_IngGaset_{date.today()}.pdf"'
     p = canvas.Canvas(response, pagesize=A4)
     ancho, alto = A4
-    
     p.setFont("Helvetica-Bold", 14)
     p.drawString(1.5*cm, alto - 1.5*cm, "IngGaset - Informe de Rodeo")
     p.setFont("Helvetica", 9)
     p.drawString(1.5*cm, alto - 2.1*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total: {Animal.objects.filter(activo=True).count()} animales | Orden: Por Corral / Mayor a menor peso")
-    
     y = alto - 3*cm
+    # NUEVO ORDEN: CARAVANA / PESO / ULT. PESAJE / CORRAL / FECHA MOV. / DIAS / ESTADO
     x_caravana = 1.5*cm
-    x_peso = 5.5*cm
-    x_corral = 7.5*cm
-    x_fecha = 10.8*cm
-    x_dias = 13.2*cm
-    x_estado = 14.7*cm
-    
+    x_peso = 4.2*cm
+    x_ult = 6.0*cm
+    x_corral = 9.0*cm
+    x_fecha = 11.8*cm
+    x_dias = 14.0*cm
+    x_estado = 15.5*cm
     def dibujar_cabecera(y_pos):
         p.setFont("Helvetica-Bold", 7)
         p.drawString(x_caravana, y_pos, "CARAVANA")
         p.drawString(x_peso, y_pos, "PESO")
+        p.drawString(x_ult, y_pos, "ULT. PESAJE")
         p.drawString(x_corral, y_pos, "CORRAL")
         p.drawString(x_fecha, y_pos, "FECHA MOV.")
         p.drawString(x_dias, y_pos, "DIAS")
@@ -308,13 +295,10 @@ def informe_pdf(request):
         p.line(1.5*cm, y_pos-0.15*cm, 19.5*cm, y_pos-0.15*cm)
         p.setFont("Helvetica", 7)
         return y_pos - 0.5*cm
-
     y = dibujar_cabecera(y)
-    
     corrales_orden = Corral.objects.all().order_by('nombre')
-    
     for corral in corrales_orden:
-        animales_corral = Animal.objects.filter(activo=True, corral_actual=corral).select_related('corral_actual').order_by('-kg_actual')
+        animales_corral = Animal.objects.filter(activo=True, corral_actual=corral).select_related('corral_actual').prefetch_related('pesada_set').order_by('-kg_actual')
         if not animales_corral.exists():
             continue
         if y < 3*cm:
@@ -344,14 +328,15 @@ def informe_pdf(request):
             corral_nombre = animal.corral_actual.nombre_bonito if animal.corral_actual else '-'
             if len(corral_nombre) > 14:
                 corral_nombre = corral_nombre[:13]
+            fecha_ult = animal.fecha_ultimo_pesaje_str
             p.drawString(x_caravana, y, str(animal.numero_caravana))
             p.drawString(x_peso, y, f"{animal.kg_actual}kg")
+            p.drawString(x_ult, y, fecha_ult)
             p.drawString(x_corral, y, str(corral_nombre))
             p.drawString(x_fecha, y, animal.fecha_ingreso_corral.strftime('%d/%m/%Y'))
             p.drawString(x_dias, y, f"{animal.dias_en_corral}d")
             p.drawString(x_estado, y, str(estado))
             y -= 0.42*cm
-    
     p.showPage()
     p.save()
     return response

@@ -14,31 +14,22 @@ class Corral(models.Model):
     gdpv_esperado = models.FloatField(default=0)
     dias_objetivo = models.IntegerField(default=0)
     kg_objetivo = models.IntegerField(default=0, verbose_name="Kg Objetivo")
-
     @property
     def nombre_bonito(self):
         return self.nombre.replace('_', ' ').title()
-
     @property
     def es_terminacion(self):
         return 'terminacion' in self.nombre
-
     def __str__(self): return self.nombre_bonito
     class Meta:
         verbose_name_plural = "01 Corrals"
 
 class Animal(models.Model):
     CATEGORIAS = [
-        ('ternero', 'Ternero'),
-        ('ternera', 'Ternera'),
-        ('novillo', 'Novillo'),
-        ('vaquillona', 'Vaquillona'),
-        ('vaca', 'Vaca'),
-        ('toro', 'Toro'),
-        ('hembra', 'Hembra'),
-        ('mej', 'MEJ'),
+        ('ternero', 'Ternero'), ('ternera', 'Ternera'), ('novillo', 'Novillo'),
+        ('vaquillona', 'Vaquillona'), ('vaca', 'Vaca'), ('toro', 'Toro'),
+        ('hembra', 'Hembra'), ('mej', 'MEJ'),
     ]
-
     numero_caravana = models.CharField(max_length=20, unique=True, verbose_name="N° Caravana")
     categoria = models.CharField(max_length=20, choices=CATEGORIAS, default='ternero')
     kg_ingreso = models.FloatField(verbose_name="Kg Ingreso", default=80)
@@ -53,46 +44,34 @@ class Animal(models.Model):
     def alimento_diario_kg(self):
         try:
             pct = self.corral_actual.porcentaje_alimento if self.corral_actual else 0
-            if pct == 0 or self.corral_actual.nombre == 'venta':
-                return 0
+            if pct == 0 or self.corral_actual.nombre == 'venta': return 0
             return round((self.kg_actual or 0) * pct / 100, 1)
-        except:
-            return 0
-
+        except: return 0
     @property
     def kg_faltantes(self):
         if self.corral_actual and self.corral_actual.peso_salida and self.corral_actual.peso_salida > 0:
             falta = self.corral_actual.peso_salida - (self.kg_actual or 0)
             return round(max(0, falta), 1)
         return 0
-
     @property
     def listo_para_mover(self):
-        if self.corral_actual and self.corral_actual.nombre == 'venta':
-            return False
+        if self.corral_actual and self.corral_actual.nombre == 'venta': return False
         if self.corral_actual and self.corral_actual.peso_salida > 0:
             return (self.kg_actual or 0) >= self.corral_actual.peso_salida
         return False
-
     @property
     def listo_para(self):
-        if not self.corral_actual:
-            return "-"
-        if self.corral_actual.nombre == 'venta':
-            return "venta"
+        if not self.corral_actual: return "-"
+        if self.corral_actual.nombre == 'venta': return "venta"
         if self.kg_faltantes <= 0 and self.corral_actual.peso_salida > 0:
-            if 'terminacion' in self.corral_actual.nombre:
-                return "venta"
-            else:
-                return "mover"
+            if 'terminacion' in self.corral_actual.nombre: return "venta"
+            else: return "mover"
         return f"Faltan {self.kg_faltantes}kg"
-
     @property
     def dias_en_corral(self):
         if self.fecha_ingreso_corral:
             return (date.today() - self.fecha_ingreso_corral).days
         return 0
-
     @property
     def dias_restantes_estimados(self):
         if self.corral_actual and self.corral_actual.gdpv_esperado and self.corral_actual.gdpv_esperado > 0:
@@ -100,14 +79,25 @@ class Animal(models.Model):
                 return int(self.kg_faltantes / self.corral_actual.gdpv_esperado)
         return 0
 
+    @property
+    def ultimo_pesaje(self):
+        try: return self.pesada_set.order_by('-fecha', '-id').first()
+        except: return None
+    @property
+    def fecha_ultimo_pesaje(self):
+        up = self.ultimo_pesaje
+        if up: return up.fecha
+        return self.fecha_ingreso_corral
+    @property
+    def fecha_ultimo_pesaje_str(self):
+        f = self.fecha_ultimo_pesaje
+        if f: return f.strftime('%d/%m/%Y')
+        return '-'
+
     def save(self, *args, **kwargs):
-        if not self.kg_actual:
-            self.kg_actual = self.kg_ingreso
+        if not self.kg_actual: self.kg_actual = self.kg_ingreso
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.numero_caravana} - {self.kg_actual}Kg"
-
+    def __str__(self): return f"{self.numero_caravana} - {self.kg_actual}Kg"
     class Meta:
         verbose_name_plural = "02 Animals"
 
@@ -123,7 +113,7 @@ class Pesada(models.Model):
     def __str__(self): return f"Pesada {self.animal.numero_caravana} - {self.peso}Kg"
     class Meta:
         verbose_name_plural = "Pesadas"
-        ordering = ['-fecha']
+        ordering = ['-fecha', '-id']
 
 class Baja(models.Model):
     MOTIVOS = [('muerte','muerte'), ('MUERTE','Muerte'), ('VENTA','Venta'), ('OTRO','Otro'), ('descarte','Descarte'), ('enfermedad','Enfermedad'), ('otro','Otro')]
@@ -157,10 +147,8 @@ class Venta(models.Model):
     kg_venta = models.FloatField()
     precio_kg = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateField(default=date.today)
-
     @property
     def total_venta(self): return float(self.kg_venta) * float(self.precio_kg)
-
     def save(self, *args, **kwargs):
         es_nueva = self._state.adding
         super().save(*args, **kwargs)
@@ -172,16 +160,8 @@ class Venta(models.Model):
                 from caja.models import MovimientoCaja
                 total = float(self.kg_venta) * float(self.precio_kg)
                 if not MovimientoCaja.objects.filter(descripcion__icontains=f"Venta {self.animal.numero_caravana}").exists():
-                    MovimientoCaja.objects.create(
-                        fecha=self.fecha,
-                        tipo='INGRESO',
-                        categoria='VENTA_HACIENDA',
-                        monto=total,
-                        descripcion=f"Venta {self.animal.numero_caravana} - {self.kg_venta}kg x ${self.precio_kg}"
-                    )
-            except Exception as e:
-                print(f"Error caja: {e}")
-
+                    MovimientoCaja.objects.create(fecha=self.fecha, tipo='INGRESO', categoria='VENTA_HACIENDA', monto=total, descripcion=f"Venta {self.animal.numero_caravana} - {self.kg_venta}kg x ${self.precio_kg}")
+            except Exception as e: print(f"Error caja: {e}")
     def __str__(self): return f"Venta {self.animal.numero_caravana}"
     class Meta:
         verbose_name_plural = "03 Ventas"

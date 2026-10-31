@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Caja Chica - IngGaset</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IngGaset">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root{--green:#2d5a4a;--beige:#f5efe3;--card:#fffdf7;--red:#b94a3a;--green-light:#d9e8dd}
@@ -37,7 +43,8 @@
     <div style="background:white;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center">💰</div>
     <div><h1>CAJA CHICA</h1><p>INGGASET - INGRESOS Y EGRESOS</p></div>
   </div>
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <a class="btn-light" href="{% url 'informe_pdf_caja' %}?persona_filtro={{ request.GET.persona_filtro }}&mes={{ request.GET.mes }}&categoria={{ request.GET.categoria }}" style="background:#e11d48;color:white;border:0">📄 PDF Caja</a>
     <a class="btn-light" href="/" style="background:#ffffff20;color:white;border:1px solid #ffffff30">← Rodeo</a>
     <a class="btn-light" href="/admin/">Admin</a>
   </div>
@@ -57,7 +64,7 @@
   <div class="card saldo-card">
     <div class="kpi-label" style="color:#ffffff99">SALDO ACTUAL</div>
     <div class="kpi-val" style="color:white">${{ saldo|floatformat:0 }}</div>
-    <span class="pill" style="background:#00000030;color:#ffffffcc">{% if saldo < 0 %}⚠️ En negativo{% else %}✅ Positivo{% endif %} • {{ ingresos_count|add:egresos_count }} ops</span>
+    <span class="pill" style="background:#00000030;color:#ffffffcc">{% if saldo < 0 %}⚠ En negativo{% else %}✅ Positivo{% endif %} • {{ ingresos_count|add:egresos_count }} ops</span>
   </div>
 </div>
 
@@ -170,5 +177,10 @@ if(ctx && egresos.length>0){
 }
 </script>
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/service-worker.js');
+}
+</script>
 </body>
 </html>

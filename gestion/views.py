@@ -112,7 +112,6 @@ def dashboard(request):
             filtrados = base.filter(numero_caravana__icontains=q)
     else:
         filtrados = base
-
     animales_por_corral = []
     total_listos = 0
     for corral in Corral.objects.all().order_by('nombre'):
@@ -136,10 +135,8 @@ def dashboard(request):
             'listos': listos,
             'expandido': True if q else False,
         })
-
     total_animales = base.count()
     total_alimento = round(sum(a.alimento_diario_kg for a in base), 1) if total_animales else 0
-
     saldo_caja = None
     try:
         from caja.models import MovimientoCaja
@@ -148,7 +145,6 @@ def dashboard(request):
         saldo_caja = ing - egr
     except Exception:
         saldo_caja = None
-
     return render(request, 'gestion/dashboard.html', {
         'total_animales': total_animales,
         'total_alimento': total_alimento,
@@ -274,17 +270,16 @@ def informe_pdf(request):
     p.drawString(1.5*cm, alto - 1.5*cm, "IngGaset - Informe de Rodeo")
     p.setFont("Helvetica", 9)
     p.drawString(1.5*cm, alto - 2.1*cm, f"Fecha: {date.today().strftime('%d/%m/%Y')} | Total: {Animal.objects.filter(activo=True).count()} animales | Orden: Por Corral / Mayor a menor peso")
-    y = alto - 3*cm
-    # NUEVO ORDEN: CARAVANA / PESO / ULT. PESAJE / CORRAL / FECHA MOV. / DIAS / ESTADO
+    y = alto - 3.2*cm
     x_caravana = 1.5*cm
-    x_peso = 4.2*cm
-    x_ult = 6.0*cm
-    x_corral = 9.0*cm
-    x_fecha = 11.8*cm
-    x_dias = 14.0*cm
-    x_estado = 15.5*cm
+    x_peso = 4.6*cm
+    x_ult = 6.2*cm
+    x_corral = 8.5*cm
+    x_fecha = 11.3*cm
+    x_dias = 13.7*cm
+    x_estado = 14.9*cm
     def dibujar_cabecera(y_pos):
-        p.setFont("Helvetica-Bold", 7)
+        p.setFont("Helvetica-Bold", 6.5)
         p.drawString(x_caravana, y_pos, "CARAVANA")
         p.drawString(x_peso, y_pos, "PESO")
         p.drawString(x_ult, y_pos, "ULT. PESAJE")
@@ -292,51 +287,53 @@ def informe_pdf(request):
         p.drawString(x_fecha, y_pos, "FECHA MOV.")
         p.drawString(x_dias, y_pos, "DIAS")
         p.drawString(x_estado, y_pos, "ESTADO")
-        p.line(1.5*cm, y_pos-0.15*cm, 19.5*cm, y_pos-0.15*cm)
-        p.setFont("Helvetica", 7)
-        return y_pos - 0.5*cm
+        p.line(1.5*cm, y_pos-0.2*cm, 19.5*cm, y_pos-0.2*cm)
+        p.setFont("Helvetica", 6.5)
+        return y_pos - 0.7*cm
     y = dibujar_cabecera(y)
     corrales_orden = Corral.objects.all().order_by('nombre')
     for corral in corrales_orden:
         animales_corral = Animal.objects.filter(activo=True, corral_actual=corral).select_related('corral_actual').prefetch_related('pesada_set').order_by('-kg_actual')
         if not animales_corral.exists():
             continue
-        if y < 3*cm:
+        if y < 3.5*cm:
             p.showPage()
             y = alto - 1.5*cm
             y = dibujar_cabecera(y)
-        p.setFont("Helvetica-Bold", 8)
+        p.setFont("Helvetica-Bold", 7.5)
         p.setFillColorRGB(0.92, 0.92, 0.92)
-        p.rect(1.5*cm, y-0.1*cm, 18*cm, 0.55*cm, fill=1, stroke=0)
+        p.rect(1.5*cm, y-0.15*cm, 18*cm, 0.6*cm, fill=1, stroke=0)
         p.setFillColorRGB(0,0,0)
-        p.drawString(1.6*cm, y+0.05*cm, f"{corral.nombre_bonito.upper()} ({animales_corral.count()} animales) - mayor a menor peso")
-        y -= 0.7*cm
-        p.setFont("Helvetica", 7)
+        p.drawString(1.6*cm, y+0.02*cm, f"{corral.nombre_bonito.upper()} ({animales_corral.count()} animales) - mayor a menor peso")
+        y -= 0.9*cm
+        p.setFont("Helvetica", 6.5)
         for animal in animales_corral:
             if y < 2*cm:
                 p.showPage()
                 y = alto - 1.5*cm
                 y = dibujar_cabecera(y)
-                p.setFont("Helvetica-Bold", 8)
+                p.setFont("Helvetica-Bold", 7.5)
                 p.setFillColorRGB(0.92, 0.92, 0.92)
-                p.rect(1.5*cm, y-0.1*cm, 18*cm, 0.55*cm, fill=1, stroke=0)
+                p.rect(1.5*cm, y-0.15*cm, 18*cm, 0.6*cm, fill=1, stroke=0)
                 p.setFillColorRGB(0,0,0)
-                p.drawString(1.6*cm, y+0.05*cm, f"{corral.nombre_bonito.upper()} (cont.) - mayor a menor")
-                y -= 0.7*cm
-                p.setFont("Helvetica", 7)
-            estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {animal.kg_faltantes}kg")
+                p.drawString(1.6*cm, y+0.02*cm, f"{corral.nombre_bonito.upper()} (cont.) - mayor a menor")
+                y -= 0.9*cm
+                p.setFont("Helvetica", 6.5)
+            estado = "VENTA" if animal.listo_para == 'venta' else ("MOVER" if animal.listo_para == 'mover' else f"Faltan {int(animal.kg_faltantes)}kg")
             corral_nombre = animal.corral_actual.nombre_bonito if animal.corral_actual else '-'
-            if len(corral_nombre) > 14:
-                corral_nombre = corral_nombre[:13]
+            if len(corral_nombre) > 12:
+                corral_nombre = corral_nombre[:11]
             fecha_ult = animal.fecha_ultimo_pesaje_str
-            p.drawString(x_caravana, y, str(animal.numero_caravana))
-            p.drawString(x_peso, y, f"{animal.kg_actual}kg")
+            caravana_txt = str(animal.numero_caravana)
+            p.drawString(x_caravana, y, caravana_txt)
+            p.drawString(x_peso, y, f"{int(animal.kg_actual)}kg")
             p.drawString(x_ult, y, fecha_ult)
             p.drawString(x_corral, y, str(corral_nombre))
             p.drawString(x_fecha, y, animal.fecha_ingreso_corral.strftime('%d/%m/%Y'))
             p.drawString(x_dias, y, f"{animal.dias_en_corral}d")
             p.drawString(x_estado, y, str(estado))
-            y -= 0.42*cm
+            y -= 0.40*cm
+        y -= 0.3*cm
     p.showPage()
     p.save()
     return response
